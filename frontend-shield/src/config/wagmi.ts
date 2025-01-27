@@ -1,9 +1,10 @@
 import { configureChains, createConfig } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
-import { alchemyProvider } from 'wagmi/providers/alchemy'
+import { alchemyProvider } from '@wagmi/core/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
 import { MetaMaskConnector } from 'wagmi/connectors/metaMask'
 
+// Configure Wagmi to use the Sepolia network and connect to the MetaMask plugin.
 const { chains, publicClient } = configureChains(
   [sepolia],
   [
