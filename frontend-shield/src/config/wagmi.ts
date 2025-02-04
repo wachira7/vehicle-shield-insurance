@@ -1,16 +1,29 @@
 import { createConfig, http, fallback } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
-import { InjectedConnector, MetaMaskConnector, WalletConnectConnector , CoinbaseWalletConnector, SafeConnector } from '@wagmi/core/connectors'
+import { InjectedConnector } from 'wagmi/connectors/injected';
+import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
+import { WalletConnectConnector } from 'wagmi/connectors/walletConnect';
+import { CoinbaseWalletConnector } from 'wagmi/connectors/coinbaseWallet';
+import { SafeConnector } from 'wagmi/connectors/safe';
 
-// You'll need a WalletConnect project ID
-const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!
+// Validate environment variables
+if (!process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID) {
+  throw new Error("NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID is required.");
+}
+if (!process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
+  throw new Error("NEXT_PUBLIC_ALCHEMY_API_KEY is required.");
+}
+
+const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID;
+const origin = typeof window !== 'undefined' ? window.location.origin : '';
+const iconUrl = origin ? `${origin}/logo.png` : 'https://default-logo-url.com/logo.png';
 
 export const config = createConfig({
   chains: [sepolia],
   transports: {
     [sepolia.id]: fallback([
       http(`https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`),
-      http()
+      http(`https://rpc.ankr.com/eth_sepolia`)
     ])
   },
   connectors: [
@@ -20,8 +33,8 @@ export const config = createConfig({
       metadata: {
         name: 'VehicleShield',
         description: 'Blockchain-based Vehicle Insurance',
-        url: typeof window !== 'undefined' ? window.location.origin : '',
-        icons: [typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '']
+        url: origin,
+        icons: [iconUrl]
       }
     }),
     new CoinbaseWalletConnector({ 
@@ -35,5 +48,4 @@ export const config = createConfig({
     }),
     new SafeConnector()
   ]
-})
-
+});
