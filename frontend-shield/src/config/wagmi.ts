@@ -1,51 +1,52 @@
-import { createConfig, http, fallback } from 'wagmi'
+import { configureChains, createConfig } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
-import { InjectedConnector } from 'wagmi/connectors/injected';
-import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
-import { WalletConnectConnector } from 'wagmi/connectors/walletConnect';
-import { CoinbaseWalletConnector } from 'wagmi/connectors/coinbaseWallet';
-import { SafeConnector } from 'wagmi/connectors/safe';
+import { alchemyProvider } from 'wagmi/providers/alchemy'
+import { publicProvider } from 'wagmi/providers/public'
+import { MetaMaskConnector } from 'wagmi/connectors/metaMask'
+import { WalletConnectConnector } from 'wagmi/connectors/walletConnect'
+import { CoinbaseWalletConnector } from 'wagmi/connectors/coinbaseWallet'
+import { InjectedConnector } from 'wagmi/connectors/injected'
 
-// Validate environment variables
-if (!process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID) {
-  throw new Error("NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID is required.");
-}
-if (!process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
-  throw new Error("NEXT_PUBLIC_ALCHEMY_API_KEY is required.");
-}
+// Configure chains & providers
+const { chains, publicClient, webSocketPublicClient } = configureChains(
+  [sepolia],
+  [
+    alchemyProvider({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY! }),
+    publicProvider()
+  ]
+)
 
-const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID;
-const origin = typeof window !== 'undefined' ? window.location.origin : '';
-const iconUrl = origin ? `${origin}/logo.png` : 'https://default-logo-url.com/logo.png';
-
+// Set up wagmi config
 export const config = createConfig({
-  chains: [sepolia],
-  transports: {
-    [sepolia.id]: fallback([
-      http(`https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`),
-      http(`https://rpc.ankr.com/eth_sepolia`)
-    ])
-  },
+  autoConnect: true,
   connectors: [
-    new MetaMaskConnector(),
+    new MetaMaskConnector({ chains }),
     new WalletConnectConnector({
-      projectId,
-      metadata: {
-        name: 'VehicleShield',
-        description: 'Blockchain-based Vehicle Insurance',
-        url: origin,
-        icons: [iconUrl]
+      chains,
+      options: {
+        projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!,
+        metadata: {
+          name: 'VehicleShield',
+          description: 'Blockchain-based Vehicle Insurance',
+          url: typeof window !== 'undefined' ? window.location.origin : '',
+          icons: [typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '']
+        }
       }
     }),
-    new CoinbaseWalletConnector({ 
-      appName: 'VehicleShield',
-      chainId: sepolia.id 
+    new CoinbaseWalletConnector({
+      chains,
+      options: {
+        appName: 'VehicleShield',
+      }
     }),
     new InjectedConnector({
+      chains,
       options: {
+        name: 'Injected',
         shimDisconnect: true,
       }
-    }),
-    new SafeConnector()
-  ]
-});
+    })
+  ],
+  publicClient,
+  webSocketPublicClient
+})
