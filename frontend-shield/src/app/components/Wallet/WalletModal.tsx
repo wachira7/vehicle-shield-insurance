@@ -1,4 +1,5 @@
 import { useConnect } from 'wagmi'
+import { Connector } from 'wagmi';
 import { MetaMaskConnector } from 'wagmi/connectors/metaMask'
 import { WalletConnectConnector } from 'wagmi/connectors/walletConnect'
 import { CoinbaseWalletConnector } from 'wagmi/connectors/coinbaseWallet'

@@ -50,7 +50,7 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
     }
   }, [status])
 
-  // Error handler
+  // Error handling
   const handleError = (error: Error) => {
     setError(error.message)
     setTimeout(() => setError(null), 5000) // Clear error after 5 seconds
