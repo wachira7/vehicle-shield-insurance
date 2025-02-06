@@ -12,9 +12,12 @@ export const PasswordReset = ({ onBack }: { onBack: () => void }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const result = await resetPassword(email)
-    if (result) {
+    try {
+      await resetPassword(email)
       setSuccess(true)
+    } catch (error) {
+      setSuccess(false)
+      console.error(error)
     }
   }
 
