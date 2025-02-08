@@ -32,9 +32,9 @@ const Footer = () => {
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Connect</h3>
               <ul className="mt-4 space-y-3">
-                <li><a href="https://twitter.com" className="text-gray-600 hover:text-gray-900">Twitter</a></li>
-                <li><a href="https://discord.com" className="text-gray-600 hover:text-gray-900">Discord</a></li>
-                <li><a href="https://github.com" className="text-gray-600 hover:text-gray-900">GitHub</a></li>
+                <li><a href="https://x.com/nationalist_ke" className="text-gray-600 hover:text-gray-900">Twitter</a></li>
+                <li><a href="https://discord.com/users/1330244338139271318" className="text-gray-600 hover:text-gray-900">Discord</a></li>
+                <li><a href="https://github.com/wachira7" className="text-gray-600 hover:text-gray-900">GitHub</a></li>
               </ul>
             </div>
           </div>

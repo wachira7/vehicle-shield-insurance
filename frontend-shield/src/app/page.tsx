@@ -1,13 +1,17 @@
 "use client"
 import { useState } from "react"
 import { Shield, Car, FileText, Lock, ChevronDown, ChevronUp, Star, CheckCircle, XCircle } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import Header from "../components/Header"
+import { useRouter } from 'next/navigation'
 
 const LandingPage = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
+  const router = useRouter()
 
+  const handleGetStarted = () => {
+    router.push('/auth')
+  }
   const features = [
     {
       icon: Car,
@@ -108,14 +112,13 @@ const LandingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 relative overflow-hidden"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 relative overflow-hidden"
       >
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-blue-600 transform -skew-y-6"></div>
@@ -131,6 +134,7 @@ const LandingPage = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleGetStarted()}
             className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold 
                      hover:bg-blue-700 transition-colors duration-200"
           >
@@ -303,6 +307,7 @@ const LandingPage = () => {
                   <ChevronDown className="h-5 w-5 text-blue-600" />
                 )}
               </button>
+            <AnimatePresence> 
               {activeFaq === index && (
                 <motion.div
                   initial={{ height: 0 }}
@@ -315,6 +320,7 @@ const LandingPage = () => {
                   </div>
                 </motion.div>
               )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </motion.div>
@@ -335,6 +341,7 @@ const LandingPage = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleGetStarted()}
             className="bg-white text-blue-600 px-8 py-3 rounded-lg text-lg font-semibold 
                      hover:bg-blue-50 transition-colors duration-200"
           >
