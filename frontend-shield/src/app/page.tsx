@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useRouter } from 'next/navigation'
 
-const LandingPage = () => {
+const Page = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
   const router = useRouter()
 
@@ -353,5 +353,5 @@ const LandingPage = () => {
   )
 }
 
-export default LandingPage
+export default Page
 
