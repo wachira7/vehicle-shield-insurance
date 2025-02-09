@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Shield, Car, FileText, Lock, ChevronDown, ChevronUp, Star, CheckCircle, XCircle, Sun, Moon} from "lucide-react"
+import { Shield, Car, FileText, Lock, ChevronDown, ChevronUp, Star, CheckCircle, XCircle, Sun, Moon,} from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -125,13 +125,13 @@ const Page = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 flex flex-col text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 relative overflow-hidden"
+        className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24 pt-24 pb-16 relative overflow-hidden"
       >
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -145,12 +145,12 @@ const Page = () => {
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-blue-600 transform -skew-y-6"></div>
         </div>
-        <div className="text-center relative z-10">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+        <div className="text-center relative z-10 max-w-4xl mx-auto">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6">
             Decentralized Vehicle Insurance
-            <span className="text-blue-600 dark:text-blue-400"> Made Simple</span>
+            <span className="text-blue-600"> Made Simple</span>
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Protect your vehicle with blockchain-powered insurance that is transparent, efficient, and hassle-free.
           </p>
           <motion.button
@@ -158,8 +158,7 @@ const Page = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => handleGetStarted()}
             className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold 
-                     hover:bg-blue-700 transition-colors duration-200 dark:bg-blue-500 dark:hover:bg-blue-600"
-            aria-label="Get started with VehicleShield"
+                     hover:bg-blue-700 transition-colors duration-200"
           >
             Get Started
           </motion.button>
@@ -168,33 +167,34 @@ const Page = () => {
 
       {/* Features Grid */}
       <motion.div
+        id="features"
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24 py-16"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
-              className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md hover:shadow-lg 
+              className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg 
                         transition-shadow duration-200"
             >
-              <feature.icon className="h-12 w-12 text-blue-600 dark:text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{feature.title}</h3>
-              <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+              <feature.icon className="h-12 w-12 text-blue-600 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+              <p className="text-gray-600">{feature.description}</p>
             </motion.div>
           ))}
         </div>
       </motion.div>
 
       {/* How It Works */}
-      <div className="bg-blue-50 dark:bg-gray-700 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div id="how-it-works" className="bg-blue-50 py-16">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center text-gray-900 mb-12">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {steps.map((step, index) => (
               <motion.div
                 key={index}
@@ -204,13 +204,13 @@ const Page = () => {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <div
-                  className="w-16 h-16 bg-blue-100 dark:bg-blue-600 rounded-full flex items-center justify-center 
-                              text-blue-600 dark:text-white font-bold text-2xl mb-4"
+                  className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center 
+                              text-blue-600 font-bold text-2xl mb-4"
                 >
                   {index + 1}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{step.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
               </motion.div>
             ))}
           </div>
@@ -219,11 +219,11 @@ const Page = () => {
 
       {/* Comparison Table */}
       <div className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center text-gray-900 mb-12">
             Why Choose Blockchain Insurance
           </h2>
-          <div className="overflow-x-auto">
+          <div className="max-w-7xl mx-auto overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-blue-600 dark:bg-blue-500 text-white dark:text-gray-100">
@@ -272,15 +272,17 @@ const Page = () => {
       </div>
 
       {/* Testimonials */}
-      <div className="bg-blue-50 dark:bg-gray-700 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">What Our Users Say</h2>
+      <div className="bg-blue-50 py-16">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center text-gray-900 mb-12">
+            What Our Users Say
+          </h2>
           <motion.div
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto"
           >
             {testimonials.map((testimonial, index) => (
               <motion.div
@@ -315,8 +317,8 @@ const Page = () => {
       </div>
 
       {/* FAQ Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">
+      <div id="faq" className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24 py-16">
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center text-gray-900 mb-12">
           Frequently Asked Questions
         </h2>
         <motion.div
@@ -365,20 +367,19 @@ const Page = () => {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        className="bg-blue-600 dark:bg-blue-500 py-16"
+        className="bg-blue-600 py-16"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white dark:text-gray-100 mb-4">Ready to Get Protected?</h2>
-          <p className="text-blue-100 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-24 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">Ready to Get Protected?</h2>
+          <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
             Join the future of vehicle insurance today. Get started with VehicleShield.
           </p>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleGetStarted()}
-            className="bg-white dark:bg-gray-800 text-blue-600 dark:text-white px-8 py-3 rounded-lg text-lg font-semibold 
-                     hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-200"
-            aria-label="Get started with VehicleShield"
+            className="bg-white text-blue-600 px-8 py-3 rounded-lg text-lg font-semibold 
+                     hover:bg-blue-50 transition-colors duration-200"
           >
             Get Started
           </motion.button>

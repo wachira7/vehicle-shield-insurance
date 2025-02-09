@@ -1,48 +1,62 @@
-'use client'
-import { useState, useEffect } from 'react'
+"use client"
+import { useState, useEffect } from "react"
 import { ConnectButton } from "../Wallet/ConnectButton"
 import Image from "next/image"
 import Link from "next/link"
-import { Menu, X, Car, Shield, FileText } from 'lucide-react'
-import { useAccount } from 'wagmi'
-import { motion, AnimatePresence } from 'framer-motion'
-
+import { Menu, X, Car, Shield, FileText } from "lucide-react"
+import { useAccount } from "wagmi"
+import { motion, AnimatePresence } from "framer-motion"
+import type React from "react"
 
 interface NavItemWithIcon {
-  name: string;
-  href: string;
-  icon: React.ReactNode;
+  name: string
+  href: string
+  icon: React.ReactNode
 }
 
 interface NavItemWithoutIcon {
-  name: string;
-  href: string;
+  name: string
+  href: string
 }
 
-type NavItem = NavItemWithIcon | NavItemWithoutIcon;
+type NavItem = NavItemWithIcon | NavItemWithoutIcon
+
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isConnected } = useAccount()
 
   useEffect(() => {
     if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden"
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = "unset"
     }
   }, [isMobileMenuOpen])
-  
 
-  const navigation: NavItem[] = isConnected ? [
-    { name: 'Dashboard', href: '/dashboard', icon: <Shield className="w-5 h-5" /> },
-    { name: 'My Vehicles', href: '/vehicles', icon: <Car className="w-5 h-5" /> },
-    { name: 'Policies', href: '/policies', icon: <Shield className="w-5 h-5" /> },
-    { name: 'Claims', href: '/claims', icon: <FileText className="w-5 h-5" /> },
-  ] : [
-    { name: 'Features', href: '/#features' },
-    { name: 'How It Works', href: '/#how-it-works' },
-    { name: 'FAQ', href: '/#faq' },
-  ]
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Only handle scroll for hash links
+    if (href.startsWith("/#")) {
+      e.preventDefault()
+      const element = document.querySelector(href.substring(1))
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" })
+        setIsMobileMenuOpen(false)
+      }
+    }
+  }
+
+  const navigation: NavItem[] = isConnected
+    ? [
+        { name: "Dashboard", href: "/dashboard", icon: <Shield className="w-5 h-5" /> },
+        { name: "My Vehicles", href: "/vehicles", icon: <Car className="w-5 h-5" /> },
+        { name: "Policies", href: "/policies", icon: <Shield className="w-5 h-5" /> },
+        { name: "Claims", href: "/claims", icon: <FileText className="w-5 h-5" /> },
+      ]
+    : [
+        { name: "Features", href: "/#features" },
+        { name: "How It Works", href: "/#how-it-works" },
+        { name: "FAQ", href: "/#faq" },
+      ]
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -51,7 +65,12 @@ const Header = () => {
           {/* Logo and brand */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.svg" alt="VehicleShield" width={32} height={32} className="h-8 w-auto" />
+              <Image
+                src="/images/reshot-icon-insurance-car-XSU4P3RWKN.svg"
+                alt="VehicleShield Logo"
+                width={40}
+                height={40}
+              />
               <span className="ml-2 text-xl font-bold text-gray-900">VehicleShield</span>
             </Link>
           </div>
@@ -60,13 +79,14 @@ const Header = () => {
           <div className="hidden md:flex md:items-center md:space-x-8">
             {navigation.map((item) => (
               <Link
-              key={item.name}
-              href={item.href}
-              className="flex items-center text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              {('icon' in item) && <span className="mr-2">{item.icon}</span>}
-              {item.name}
-            </Link>
+                key={item.name}
+                href={item.href}
+                onClick={(e) => handleScroll(e, item.href)}
+                className="flex items-center text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                {"icon" in item && <span className="mr-2">{item.icon}</span>}
+                {item.name}
+              </Link>
             ))}
             <ConnectButton className="ml-4" />
           </div>
@@ -108,7 +128,7 @@ const Header = () => {
           {isMobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
               className="md:hidden"
@@ -124,9 +144,9 @@ const Header = () => {
                     <Link
                       href={item.href}
                       className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => handleScroll(e, item.href)}
                     >
-                      {('icon' in item) && <span className="mr-2">{item.icon}</span>}
+                      {"icon" in item && <span className="mr-2">{item.icon}</span>}
                       {item.name}
                     </Link>
                   </motion.div>
@@ -151,3 +171,4 @@ const Header = () => {
 }
 
 export default Header
+

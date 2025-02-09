@@ -1,3 +1,4 @@
+"use client"
 import { configureChains, createConfig } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
 import { alchemyProvider } from 'wagmi/providers/alchemy'
