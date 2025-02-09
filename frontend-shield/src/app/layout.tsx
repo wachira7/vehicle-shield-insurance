@@ -1,3 +1,5 @@
+import { WagmiConfig } from 'wagmi'
+import { config } from '@/config/wagmi'
 import { Suspense } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
 import { Inter } from 'next/font/google'
@@ -57,7 +59,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ErrorBoundary>
+      <ErrorBoundary>
+        <WagmiConfig config={config}>
           <AuthProvider>
             <div className="flex flex-col min-h-screen">
               <Header />
@@ -69,7 +72,8 @@ export default function RootLayout({
               <Footer />
             </div>
           </AuthProvider>
-        </ErrorBoundary>
+        </WagmiConfig>
+      </ErrorBoundary>
       </body>
     </html>
   )
