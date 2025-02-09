@@ -1,16 +1,29 @@
 "use client"
-import { useState } from "react"
-import { Shield, Car, FileText, Lock, ChevronDown, ChevronUp, Star, CheckCircle, XCircle } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Shield, Car, FileText, Lock, ChevronDown, ChevronUp, Star, CheckCircle, XCircle, Sun, Moon} from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 
 const Page = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
+  const [darkMode, setDarkMode] = useState(false)
   const router = useRouter()
 
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+  }, [darkMode])
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode)
+  }
+
   const handleGetStarted = () => {
-    router.push('/auth')
+    router.push("/auth")
   }
   const features = [
     {
@@ -112,7 +125,7 @@ const Page = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 flex flex-col text-gray-900 dark:text-gray-100">
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -120,15 +133,24 @@ const Page = () => {
         transition={{ duration: 0.8 }}
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 relative overflow-hidden"
       >
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleDarkMode}
+          className="absolute top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700"
+          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {darkMode ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
+        </motion.button>
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-blue-600 transform -skew-y-6"></div>
         </div>
         <div className="text-center relative z-10">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-gray-100 mb-6">
             Decentralized Vehicle Insurance
-            <span className="text-blue-600"> Made Simple</span>
+            <span className="text-blue-600 dark:text-blue-400"> Made Simple</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
             Protect your vehicle with blockchain-powered insurance that is transparent, efficient, and hassle-free.
           </p>
           <motion.button
@@ -136,7 +158,8 @@ const Page = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => handleGetStarted()}
             className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold 
-                     hover:bg-blue-700 transition-colors duration-200"
+                     hover:bg-blue-700 transition-colors duration-200 dark:bg-blue-500 dark:hover:bg-blue-600"
+            aria-label="Get started with VehicleShield"
           >
             Get Started
           </motion.button>
@@ -156,21 +179,21 @@ const Page = () => {
             <motion.div
               key={index}
               variants={itemVariants}
-              className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg 
+              className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md hover:shadow-lg 
                         transition-shadow duration-200"
             >
-              <feature.icon className="h-12 w-12 text-blue-600 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-              <p className="text-gray-600">{feature.description}</p>
+              <feature.icon className="h-12 w-12 text-blue-600 dark:text-blue-400 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{feature.title}</h3>
+              <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
             </motion.div>
           ))}
         </div>
       </motion.div>
 
       {/* How It Works */}
-      <div className="bg-blue-50 py-16">
+      <div className="bg-blue-50 dark:bg-gray-700 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">How It Works</h2>
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {steps.map((step, index) => (
               <motion.div
@@ -181,13 +204,13 @@ const Page = () => {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <div
-                  className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center 
-                              text-blue-600 font-bold text-2xl mb-4"
+                  className="w-16 h-16 bg-blue-100 dark:bg-blue-600 rounded-full flex items-center justify-center 
+                              text-blue-600 dark:text-white font-bold text-2xl mb-4"
                 >
                   {index + 1}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
-                <p className="text-gray-600">{step.description}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{step.title}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
               </motion.div>
             ))}
           </div>
@@ -197,11 +220,13 @@ const Page = () => {
       {/* Comparison Table */}
       <div className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Why Choose Blockchain Insurance</h2>
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">
+            Why Choose Blockchain Insurance
+          </h2>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-blue-600 text-white">
+                <tr className="bg-blue-600 dark:bg-blue-500 text-white dark:text-gray-100">
                   <th className="p-4 text-left">Feature</th>
                   <th className="p-4 text-center">Traditional Insurance</th>
                   <th className="p-4 text-center">VehicleShield</th>
@@ -211,33 +236,33 @@ const Page = () => {
                 <tr className="border-b">
                   <td className="p-4 font-medium">Claim Processing Time</td>
                   <td className="p-4 text-center">Days to Weeks</td>
-                  <td className="p-4 text-center font-semibold text-green-600">24-48 Hours</td>
+                  <td className="p-4 text-center font-semibold text-green-600 dark:text-green-400">24-48 Hours</td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-4 font-medium">Policy Transparency</td>
                   <td className="p-4 text-center">
-                    <XCircle className="inline h-5 w-5 text-red-500" />
+                    <XCircle className="inline h-5 w-5 text-red-500 dark:text-red-400" />
                   </td>
                   <td className="p-4 text-center">
-                    <CheckCircle className="inline h-5 w-5 text-green-500" />
+                    <CheckCircle className="inline h-5 w-5 text-green-500 dark:text-green-400" />
                   </td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-4 font-medium">Automated Payouts</td>
                   <td className="p-4 text-center">
-                    <XCircle className="inline h-5 w-5 text-red-500" />
+                    <XCircle className="inline h-5 w-5 text-red-500 dark:text-red-400" />
                   </td>
                   <td className="p-4 text-center">
-                    <CheckCircle className="inline h-5 w-5 text-green-500" />
+                    <CheckCircle className="inline h-5 w-5 text-green-500 dark:text-green-400" />
                   </td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-4 font-medium">24/7 Policy Management</td>
                   <td className="p-4 text-center">
-                    <XCircle className="inline h-5 w-5 text-red-500" />
+                    <XCircle className="inline h-5 w-5 text-red-500 dark:text-red-400" />
                   </td>
                   <td className="p-4 text-center">
-                    <CheckCircle className="inline h-5 w-5 text-green-500" />
+                    <CheckCircle className="inline h-5 w-5 text-green-500 dark:text-green-400" />
                   </td>
                 </tr>
               </tbody>
@@ -247,9 +272,9 @@ const Page = () => {
       </div>
 
       {/* Testimonials */}
-      <div className="bg-blue-50 py-16">
+      <div className="bg-blue-50 dark:bg-gray-700 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">What Our Users Say</h2>
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">What Our Users Say</h2>
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -258,7 +283,11 @@ const Page = () => {
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
           >
             {testimonials.map((testimonial, index) => (
-              <motion.div key={index} variants={itemVariants} className="bg-white p-6 rounded-xl shadow-md">
+              <motion.div
+                key={index}
+                variants={itemVariants}
+                className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"
+              >
                 <div className="flex items-center mb-4">
                   <Image
                     src={testimonial.avatar || "/placeholder.svg"}
@@ -266,18 +295,19 @@ const Page = () => {
                     width={60}
                     height={60}
                     className="rounded-full mr-4"
+                    loading="lazy"
                   />
                   <div>
-                    <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                    <div className="text-gray-600 text-sm">{testimonial.role}</div>
+                    <div className="font-semibold text-gray-900 dark:text-gray-100">{testimonial.name}</div>
+                    <div className="text-gray-600 dark:text-gray-300 text-sm">{testimonial.role}</div>
                   </div>
                 </div>
                 <div className="flex mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                    <Star key={i} className="h-5 w-5 text-yellow-400 dark:text-yellow-300 fill-current" />
                   ))}
                 </div>
-                <p className="text-gray-700">&quot;{testimonial.content}&quot;</p>
+                <p className="text-gray-700 dark:text-gray-300">&quot;{testimonial.content}&quot;</p>
               </motion.div>
             ))}
           </motion.div>
@@ -286,7 +316,9 @@ const Page = () => {
 
       {/* FAQ Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Frequently Asked Questions</h2>
+        <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">
+          Frequently Asked Questions
+        </h2>
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -298,28 +330,30 @@ const Page = () => {
             <motion.div variants={itemVariants} key={index} className="mb-4">
               <button
                 onClick={() => setActiveFaq(activeFaq === index ? null : index)}
-                className="w-full flex justify-between items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="w-full flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                aria-expanded={activeFaq === index}
+                aria-controls={`faq-answer-${index}`}
               >
-                <span className="font-semibold text-left text-gray-900">{faq.question}</span>
+                <span className="font-semibold text-left text-gray-900 dark:text-gray-100">{faq.question}</span>
                 {activeFaq === index ? (
-                  <ChevronUp className="h-5 w-5 text-blue-600" />
+                  <ChevronUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 ) : (
-                  <ChevronDown className="h-5 w-5 text-blue-600" />
+                  <ChevronDown className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 )}
               </button>
-            <AnimatePresence> 
-              {activeFaq === index && (
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: "auto" }}
-                  exit={{ height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="p-4 bg-blue-50 rounded-b-lg">
-                    <p className="text-gray-700">{faq.answer}</p>
-                  </div>
-                </motion.div>
-              )}
+              <AnimatePresence>
+                {activeFaq === index && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: "auto" }}
+                    exit={{ height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div id={`faq-answer-${index}`} className="p-4 bg-blue-50 dark:bg-gray-700 rounded-b-lg">
+                      <p className="text-gray-700 dark:text-gray-300">{faq.answer}</p>
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
             </motion.div>
           ))}
@@ -331,19 +365,20 @@ const Page = () => {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        className="bg-blue-600 py-16"
+        className="bg-blue-600 dark:bg-blue-500 py-16"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Protected?</h2>
-          <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold text-white dark:text-gray-100 mb-4">Ready to Get Protected?</h2>
+          <p className="text-blue-100 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
             Join the future of vehicle insurance today. Get started with VehicleShield.
           </p>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleGetStarted()}
-            className="bg-white text-blue-600 px-8 py-3 rounded-lg text-lg font-semibold 
-                     hover:bg-blue-50 transition-colors duration-200"
+            className="bg-white dark:bg-gray-800 text-blue-600 dark:text-white px-8 py-3 rounded-lg text-lg font-semibold 
+                     hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-200"
+            aria-label="Get started with VehicleShield"
           >
             Get Started
           </motion.button>
