@@ -100,4 +100,5 @@ interface PasswordStrengthProps {
             </motion.div>
           </div>
         </div>
-      );
+      )
+  }
