@@ -1,4 +1,4 @@
 declare module '@adraffy/*' {
-    const content: any;
+    const content: unknown;
     export = content;
   }
