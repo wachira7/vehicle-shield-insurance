@@ -6,7 +6,13 @@ declare module '@adraffy/words' {
 declare module '@adraffy/eth-addr' {
   export function checksumAddress(address: string): string;
   export function isAddress(address: string): boolean;
-  export default { checksumAddress, isAddress };
+  
+  const ethAddr = {
+    checksumAddress,
+    isAddress
+  };
+  
+  export default ethAddr;
 }
 
 declare module '@adraffy' {
