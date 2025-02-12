@@ -1,4 +1,15 @@
-declare module '@adraffy/*' {
-    const content: unknown;
-    export = content;
-  }
+declare module '@adraffy/words' {
+  export const words: string[];
+  export default words;
+}
+
+declare module '@adraffy/eth-addr' {
+  export function checksumAddress(address: string): string;
+  export function isAddress(address: string): boolean;
+  export default { checksumAddress, isAddress };
+}
+
+declare module '@adraffy' {
+  export * from '@adraffy/words';
+  export * from '@adraffy/eth-addr';
+}
