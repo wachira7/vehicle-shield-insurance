@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useAccount, useDisconnect, useNetwork, useSwitchNetwork } from 'wagmi'
+import { useAccount, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
 import { WalletModal } from './WalletModal'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import { sepolia } from 'wagmi/chains'
+import { sepolia } from 'viem/chains'
 
 interface ConnectButtonProps {
   className?: string;
@@ -19,8 +19,8 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
   const router = useRouter()
   const { address, isConnected, status } = useAccount()
   const { disconnect } = useDisconnect()
-  const { chain } = useNetwork()
-  const { switchNetwork, isLoading: isSwitchingNetwork } = useSwitchNetwork()
+  const chainId = useChainId()
+  const { switchChain, isPending: isSwitchingNetwork } = useSwitchChain()
 
   // Handle redirect after successful connection
   useEffect(() => {
@@ -31,10 +31,10 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
 
   // Handle network switching
   useEffect(() => {
-    if (isConnected && chain?.id !== sepolia.id && switchNetwork) {
-      switchNetwork(sepolia.id)
+    if (isConnected && chainId !== sepolia.id && switchChain) {
+      switchChain({ chainId: sepolia.id })
     }
-  }, [chain?.id, isConnected, switchNetwork])
+  }, [chainId, isConnected, switchChain])
 
   // Handle connection status
   useEffect(() => {
@@ -53,7 +53,7 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
   // Error handling
   const handleError = (error: Error) => {
     setError(error.message)
-    setTimeout(() => setError(null), 5000) // Clear error after 5 seconds
+    setTimeout(() => setError(null), 5000)
   }
 
   // Handle disconnect
@@ -72,11 +72,11 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-4">
-        {chain?.id !== sepolia.id && (
+        {chainId !== sepolia.id && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-red-500">Wrong Network</span>
             <button
-              onClick={() => switchNetwork?.(sepolia.id)}
+              onClick={() => switchChain({ chainId: sepolia.id })}
               disabled={isSwitchingNetwork}
               className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 
                        transition-colors duration-200 disabled:opacity-50"

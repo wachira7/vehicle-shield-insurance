@@ -1,49 +1,43 @@
+'use client'
 import { useConnect } from 'wagmi'
-import { Connector } from 'wagmi';
-import { MetaMaskConnector } from 'wagmi/connectors/metaMask'
-import { WalletConnectConnector } from 'wagmi/connectors/walletConnect'
-import { CoinbaseWalletConnector } from 'wagmi/connectors/coinbaseWallet'
-import { InjectedConnector } from 'wagmi/connectors/injected'
-import { Wallet, Coins, CreditCard, Plug, LucideIcon  } from 'lucide-react'
+import { Wallet, Coins, CreditCard, Plug, LucideIcon } from 'lucide-react'
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-
-type WalletOption ={
-    name: string;
-    Icon: LucideIcon;  // Using LucideIcon type
-    connector: Connector | undefined;   
-  }
+type WalletOption = {
+  name: string;
+  Icon: LucideIcon;
+  id: string;
+}
 
 export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
-  const { connect, connectors, error, isLoading, pendingConnector } = useConnect()
+  const { connect, connectors, error, isLoading, isPending } = useConnect()
 
-  const wallets = [
+  const wallets: WalletOption[] = [
     {
       name: 'MetaMask',
       Icon: Wallet,
-      connector: connectors.find(c => c instanceof MetaMaskConnector)
+      id: 'metaMask'
     },
     {
       name: 'WalletConnect',
       Icon: CreditCard,
-      connector: connectors.find(c => c instanceof WalletConnectConnector)
+      id: 'walletConnect'
     },
     {
       name: 'Coinbase Wallet',
       Icon: Coins,
-      connector: connectors.find(c => c instanceof CoinbaseWalletConnector)
+      id: 'coinbaseWallet'
     },
     {
-        name: 'Browser Wallet',
-        Icon: Plug,
-        connector: connectors.find(c => c instanceof InjectedConnector)
-      }
-
-  ]satisfies WalletOption[]
+      name: 'Browser Wallet',
+      Icon: Plug,
+      id: 'injected'
+    }
+  ]
 
   if (!isOpen) return null
 
@@ -56,23 +50,24 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
         </div>
         <div className="grid grid-cols-2 gap-4">
           {wallets.map((wallet) => {
+            const connector = connectors.find(c => c.id === wallet.id)
             const { Icon } = wallet
             return (
               <button
                 key={wallet.name}
                 onClick={() => {
-                  if (wallet.connector) {
-                    connect({ connector: wallet.connector })
+                  if (connector) {
+                    connect({ connector })
                     onClose()
                   }
                 }}
-                disabled={!wallet.connector?.ready}
+                disabled={!connector?.ready || isLoading}
                 className="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 
                          transition-colors duration-200 disabled:opacity-50"
               >
                 <Icon className="w-10 h-10 mb-2 text-blue-600" />
                 <span className="text-sm font-medium">{wallet.name}</span>
-                {isLoading && pendingConnector === wallet.connector && 
+                {isPending && 
                   <span className="text-xs text-blue-600 mt-1">(connecting)</span>
                 }
               </button>
