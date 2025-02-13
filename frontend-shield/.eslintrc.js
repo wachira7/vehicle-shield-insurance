@@ -1,6 +1,10 @@
 module.exports = {
-    extends: 'next/core-web-vitals',
-    parserOptions: {
-      project: './tsconfig.json'
-    }
-  }
+  extends: 'next/core-web-vitals',
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+    project: ['./tsconfig.json'],
+  },
+  plugins: ['@typescript-eslint'],
+  rules: {},
+};
