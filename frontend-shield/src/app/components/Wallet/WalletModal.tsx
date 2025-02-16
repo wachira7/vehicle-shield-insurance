@@ -1,6 +1,6 @@
 'use client'
 import { useConnect } from 'wagmi'
-import { Wallet, Coins, CreditCard, Plug, LucideIcon } from 'lucide-react'
+import { Wallet, Coins, CreditCard, Plug, Shield, Ghost, LucideIcon } from 'lucide-react'
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -14,13 +14,23 @@ type WalletOption = {
 }
 
 export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
-  const { connect, connectors, error, isLoading, isPending } = useConnect()
+  const { connect, connectors, error, isPending } = useConnect()
 
   const wallets: WalletOption[] = [
     {
       name: 'MetaMask',
       Icon: Wallet,
       id: 'metaMask'
+    },
+    {
+      name: 'Trust Wallet',
+      Icon: Shield, 
+      id: 'injected'
+    },
+    {
+      name: 'Phantom',
+      Icon: Ghost, 
+      id: 'injected'
     },
     {
       name: 'WalletConnect',
@@ -61,7 +71,7 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
                     onClose()
                   }
                 }}
-                disabled={!connector?.ready || isLoading}
+                disabled={!connector?.ready || isPending}
                 className="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 
                          transition-colors duration-200 disabled:opacity-50"
               >
