@@ -1,0 +1,84 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IRiskAssessment",
+  "sourceName": "contracts/IVehicleShield.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_regPlate",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_baseValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_age",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_mileage",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_condition",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bool",
+          "name": "_hasAccidentHistory",
+          "type": "bool"
+        }
+      ],
+      "name": "assessVehicle",
+      "outputs": [
+        {
+          "internalType": "enum IVehicleShield.VerificationTier",
+          "name": "",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_regPlate",
+          "type": "string"
+        },
+        {
+          "internalType": "enum IVehicleShield.VerificationTier",
+          "name": "_tier",
+          "type": "uint8"
+        }
+      ],
+      "name": "calculatePremium",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
