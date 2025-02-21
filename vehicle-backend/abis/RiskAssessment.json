@@ -1,0 +1,409 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "regPlate",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "riskScore",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "tier",
+        "type": "uint8"
+      }
+    ],
+    "name": "RiskAssessed",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_baseValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_age",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_mileage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_condition",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bool",
+        "name": "_hasAccidentHistory",
+        "type": "bool"
+      }
+    ],
+    "name": "assessVehicle",
+    "outputs": [
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "_tier",
+        "type": "uint8"
+      }
+    ],
+    "name": "calculatePremium",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_age",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_mileage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_condition",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bool",
+        "name": "_hasAccidentHistory",
+        "type": "bool"
+      }
+    ],
+    "name": "calculateRiskScore",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_baseValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_riskScore",
+        "type": "uint8"
+      }
+    ],
+    "name": "determineTier",
+    "outputs": [
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      }
+    ],
+    "name": "getVehicleRisk",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "baseValue",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "age",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "mileage",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "condition",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "riskScore",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "hasAccidentHistory",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lastAssessment",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RiskAssessment.VehicleRisk",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "name": "tierPremiums",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "baseRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "ageMultiplier",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "conditionMultiplier",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "accidentPenalty",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "_tier",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_baseRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_ageMultiplier",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_conditionMultiplier",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_accidentPenalty",
+        "type": "uint256"
+      }
+    ],
+    "name": "updatePremiumFactors",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "vehicleRisks",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "baseValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "age",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "mileage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "condition",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "riskScore",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bool",
+        "name": "hasAccidentHistory",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lastAssessment",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

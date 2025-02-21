@@ -1,0 +1,682 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_policyNFTAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_riskAssessmentAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "claimId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ClaimPaid",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "claimId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "ClaimProcessed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "claimId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ClaimSubmitted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "regPlate",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "uploadDate",
+        "type": "uint256"
+      }
+    ],
+    "name": "PhotosUploaded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "vehicleId",
+        "type": "string"
+      }
+    ],
+    "name": "PolicyCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "regPlate",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "tier",
+        "type": "uint8"
+      }
+    ],
+    "name": "VehicleRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "regPlate",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum InsuranceCore.VerificationStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "name": "VerificationStatusUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "claims",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "claimId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "photoHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isProcessed",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isPaid",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "name": "coverageLimits",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_duration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_coverage",
+        "type": "uint256"
+      }
+    ],
+    "name": "createPolicy",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "policies",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "coverage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isActive",
+        "type": "bool"
+      },
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "tier",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "policyNFT",
+    "outputs": [
+      {
+        "internalType": "contract IPolicyNFT",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_claimId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_approved",
+        "type": "bool"
+      }
+    ],
+    "name": "processClaim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_make",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_model",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_year",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_baseValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_mileage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_condition",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bool",
+        "name": "_hasAccidentHistory",
+        "type": "bool"
+      }
+    ],
+    "name": "registerVehicle",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "riskAssessment",
+    "outputs": [
+      {
+        "internalType": "contract IRiskAssessment",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_policyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_photoHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "submitClaim",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "enum InsuranceCore.VerificationStatus",
+        "name": "_status",
+        "type": "uint8"
+      }
+    ],
+    "name": "updateVerificationStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_frontHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_backHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_leftHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_rightHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_mirrorLeftHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_mirrorRightHash",
+        "type": "string"
+      }
+    ],
+    "name": "uploadVehiclePhotos",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "vehiclePhotos",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "frontHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "backHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "leftHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "rightHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "mirrorLeftHash",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "mirrorRightHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "uploadDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isComplete",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "vehicles",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "regPlate",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "make",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "model",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "year",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "enum InsuranceCore.VerificationStatus",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
+        "internalType": "enum IVehicleShield.VerificationTier",
+        "name": "tier",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lastVerificationDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isRegistered",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
+]
