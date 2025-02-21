@@ -1,4 +1,5 @@
 //useVehicle.ts
+"use client"
 import { useState } from 'react';
 import { useContract } from './useContract';
 import { INSURANCE_CONSTANTS, PHOTO_REQUIREMENTS } from '../config/constants';
