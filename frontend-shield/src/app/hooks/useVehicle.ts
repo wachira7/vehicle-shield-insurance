@@ -1,3 +1,4 @@
+//useVehicle.ts
 import { useState } from 'react';
 import { useContract } from './useContract';
 import { INSURANCE_CONSTANTS, PHOTO_REQUIREMENTS } from '../config/constants';
@@ -8,6 +9,18 @@ type PhotoType = 'image/jpeg' | 'image/png';
 type PhotoView = typeof PHOTO_REQUIREMENTS.requiredViews[number];
 
 // Explicit interfaces for better documentation and type safety
+
+interface VehicleData {
+    make: string;
+    model: string;
+    year: number;
+    baseValue: bigint;
+    mileage: number;
+    condition: number;
+    hasAccidentHistory: boolean;
+    isRegistered: boolean;
+    // Add other fields from your smart contract
+}
 interface PhotoValidation {
     regPlate: string;
     photos: Record<PhotoView, File>;
@@ -28,7 +41,7 @@ interface VehicleRegistration {
 }
 
 export const useVehicle = () => {
-    const { getContractWrite, getContractRead } = useContract();
+    const { readFromContract, writeToContract } = useContract();
     const [isLoading, setIsLoading] = useState(false);
 
     const validatePhotos = ({ photos, maxSize, acceptedTypes, requiredViews }: Omit<PhotoValidation, 'regPlate'>) => {
@@ -66,7 +79,7 @@ export const useVehicle = () => {
                 throw new Error('Condition must be between 1-10');
             }
 
-            const { data } = getContractWrite('InsuranceCore', 'registerVehicle', [
+            const { hash, error } = await writeToContract('InsuranceCore', 'registerVehicle', [
                 regPlate,
                 make,
                 model,
@@ -77,21 +90,16 @@ export const useVehicle = () => {
                 hasAccidentHistory,
             ]);
 
-            if (data && typeof data === 'object' && 'write' in data) {
-                const { write } = data;
-                if (write && typeof write === 'function') {
-                    await (write as () => Promise<void>)();
-                    toast.success('Vehicle registered successfully');
-                }
-            }
+            if (error) throw error;
+            if (hash) toast.success('Vehicle registered successfully');
+            
+            return { hash, error: null };
+
         } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error registering vehicle:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error registering vehicle:', error);
-                toast.error('Failed to register vehicle');
-            }
+            const message = error instanceof Error ? error.message : 'Failed to register vehicle';
+            console.error('Error registering vehicle:', error);
+            toast.error(message);
+            return { hash: null, error };
         } finally {
             setIsLoading(false);
         }
@@ -118,7 +126,7 @@ export const useVehicle = () => {
                 mirrorRight: 'hash6'
             } as const;
 
-            const { data } = getContractWrite('InsuranceCore', 'uploadVehiclePhotos', [
+            const { hash, error } = await writeToContract('InsuranceCore', 'uploadVehiclePhotos', [
                 regPlate,
                 photoHashes.front,
                 photoHashes.back,
@@ -128,21 +136,16 @@ export const useVehicle = () => {
                 photoHashes.mirrorRight,
             ]);
 
-            if (data && typeof data === 'object' && 'write' in data) {
-                const { write } = data;
-                if (write && typeof write === 'function') {
-                    await (write as () => Promise<void>)();
-                    toast.success('Photos uploaded successfully');
-                }
-            }
-        } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error uploading photos:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error uploading photos:', error);
-                toast.error('Failed to upload photos');
-            }
+            if (error) throw error;
+            if (hash) toast.success('Photos uploaded successfully');
+            
+            return { hash, error: null };
+
+        }  catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to upload photos';
+            console.error('Error uploading photos:', error);
+            toast.error(message);
+            return { hash: null, error };
         } finally {
             setIsLoading(false);
         }
@@ -150,16 +153,13 @@ export const useVehicle = () => {
 
     const getVehicleDetails = async (regPlate: string) => {
         try {
-            const result = await getContractRead('InsuranceCore', 'vehicles', [regPlate]);
-            return result.data;
+            const { data, error } = await readFromContract<VehicleData>('InsuranceCore', 'vehicles', [regPlate]);
+            if (error) throw error;
+            return data;
         } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error fetching vehicle details:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error fetching vehicle details:', error);
-                toast.error('Failed to fetch vehicle details');
-            }
+            const message = error instanceof Error ? error.message : 'Failed to fetch vehicle details';
+            console.error('Error fetching vehicle details:', error);
+            toast.error(message);
             return null;
         }
     };

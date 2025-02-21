@@ -1,11 +1,34 @@
+//usePolicy.ts
+"use client";
 import { useState } from 'react';
 import { useContract } from './useContract';
 import { INSURANCE_CONSTANTS } from '../config/constants';
 import { toast } from 'react-hot-toast';
 import { parseEther, formatEther } from 'viem';
 
+// Define interfaces for policy data
+interface PolicyData {
+    regPlate: string;
+    coverage: bigint;
+    startDate: bigint;
+    endDate: bigint;
+    isActive: boolean;
+    owner: string;      
+    policyId: number;   
+    premium: bigint;
+    // Add other fields from your smart contract
+}
+
+interface FormattedPolicyData {
+    regPlate: string;
+    coverage: string;
+    startDate: Date;
+    endDate: Date;
+    isActive: boolean;
+    // Add other fields
+}
 export const usePolicy = () => {
-    const { getContractWrite, getContractRead } = useContract();
+    const { readFromContract, writeToContract } = useContract();
     const [isLoading, setIsLoading] = useState(false);
 
     const createPolicy = async (
@@ -22,98 +45,85 @@ export const usePolicy = () => {
                 duration > INSURANCE_CONSTANTS.MAX_DURATION) {
                 throw new Error(`Duration must be between ${INSURANCE_CONSTANTS.MIN_DURATION} and ${INSURANCE_CONSTANTS.MAX_DURATION} days`);
             }
-
+    
             const coverageEth = parseFloat(coverage);
             if (coverageEth < parseFloat(INSURANCE_CONSTANTS.MIN_COVERAGE) || 
                 coverageEth > parseFloat(INSURANCE_CONSTANTS.MAX_COVERAGE)) {
                 throw new Error(`Coverage must be between ${INSURANCE_CONSTANTS.MIN_COVERAGE} and ${INSURANCE_CONSTANTS.MAX_COVERAGE} ETH`);
             }
-
-            const durationInSeconds = Number(duration) * 24 * 60 * 60; // Convert days to seconds
-
-            const { data } = getContractWrite(
+    
+            const durationInSeconds = Number(duration) * 24 * 60 * 60;
+    
+            const { hash, error } = await writeToContract(
                 'InsuranceCore',
                 'createPolicy',
                 [
                     regPlate,
-                    durationInSeconds.toString(), // Use string instead of BigInt
-                    parseEther(coverage)
+                    durationInSeconds.toString(),
+                    parseEther(coverage),
+                      
                 ],
+                //options object
                 { value: parseEther(premium) }
             );
-
-            if (data && typeof data === 'object' && 'write' in data) {
-                const { write } = data;
-                if (write && typeof write === 'function') {
-                    await (write as () => Promise<void>)();
-                    toast.success('Policy created successfully');
-                }
-            }
+    
+            if (error) throw error;
+            if (hash) toast.success('Policy created successfully');
+            
+            return { hash, error: null };
         } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error creating policy:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error creating policy:', error);
-                toast.error('Failed to create policy');
-            }
+            const message = error instanceof Error ? error.message : 'Failed to create policy';
+            console.error('Error creating policy:', error);
+            toast.error(message);
+            return { hash: null, error };
         } finally {
             setIsLoading(false);
         }
     };
 
-    const getPolicyDetails = async (policyId: number) => {
+    const getPolicyDetails = async (policyId: number): Promise<FormattedPolicyData | null> => {
         try {
-            const result = await getContractRead('InsuranceCore', 'policies', [policyId]);
-            if (result.data) {
+            const { data, error } = await readFromContract<PolicyData>('InsuranceCore', 'policies', [policyId]);
+            if (error) throw error;
+            if (data) {
                 return {
-                    ...result.data,
-                    coverage: formatEther(result.data.coverage),
-                    startDate: new Date(Number(result.data.startDate) * 1000),
-                    endDate: new Date(Number(result.data.endDate) * 1000)
+                    ...data,
+                    coverage: formatEther(data.coverage),
+                    startDate: new Date(Number(data.startDate) * 1000),
+                    endDate: new Date(Number(data.endDate) * 1000)
                 };
             }
             return null;
         } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error fetching policy details:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error fetching policy details:', error);
-                toast.error('Failed to fetch policy details');
-            }
+            const message = error instanceof Error ? error.message : 'Failed to fetch policy details';
+            console.error('Error fetching policy details:', error);
+            toast.error(message);
             return null;
         }
     };
 
-    const getUserPolicies = async (address: string) => {
+    const getUserPolicies = async (address: string): Promise<number[]> => {
         try {
-            const result = await getContractRead('PolicyNFT', 'getPolicyByOwner', [address]);
-            return result.data || [];
+            const { data, error } = await readFromContract<number[]>('PolicyNFT', 'getPolicyByOwner', [address]);
+            if (error) throw error;
+            return data || [];
         } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error fetching user policies:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error fetching user policies:', error);
-                toast.error('Failed to fetch user policies');
-            }
+            const message = error instanceof Error ? error.message : 'Failed to fetch user policies';
+            console.error('Error fetching user policies:', error);
+            toast.error(message);
             return [];
         }
     };
-
-    const calculatePremium = async (regPlate: string, tier: number) => {
+    
+    const calculatePremium = async (regPlate: string, tier: number): Promise<string> => {
         try {
-            const result = await getContractRead('RiskAssessment', 'calculatePremium', [regPlate, tier]);
-            return formatEther(result.data || '0');
+            const { data, error } = await readFromContract<bigint>('RiskAssessment', 'calculatePremium', [regPlate, tier]);
+            if (error) throw error;
+            return formatEther(data || BigInt(0));
         } catch (error) {
-            if (error instanceof Error) {
-                console.error('Error calculating premium:', error);
-                toast.error(error.message);
-            } else {
-                console.error('Unknown error calculating premium:', error);
-                toast.error('Failed to calculate premium');
-            }
+            const message = error instanceof Error ? error.message : 'Failed to calculate premium';
+            console.error('Error calculating premium:', error);
+            toast.error(message);
             return '0';
         }
     };
