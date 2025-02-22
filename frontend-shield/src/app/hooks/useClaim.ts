@@ -10,7 +10,7 @@ interface ClaimData {
     description: string;
     photoHash: string;
     amount: bigint;
-    status: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROCESSING';
     timestamp: bigint;
     // Add other fields from your smart contract
 }
