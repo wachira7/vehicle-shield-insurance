@@ -1,8 +1,10 @@
-import { WagmiConfig } from 'wagmi'
+//src/app/layout.tsx
+import { WagmiProvider } from 'wagmi'
 import { config } from '@/config/wagmi'
 import { Suspense } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
 import { Inter } from 'next/font/google'
+import { Toaster } from '@/app/components/ui/toaster'
 import Header from '@/app/components/layout/Header'
 import Footer from '@/app/components/layout/Footer'
 import Loading from '@/app/components/common/Loading'
@@ -60,7 +62,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
       <ErrorBoundary>
-        <WagmiConfig config={config}>
+        <WagmiProvider config={config}>
           <AuthProvider>
             <div className="flex flex-col min-h-screen">
               <Header />
@@ -70,9 +72,10 @@ export default function RootLayout({
                 </main>
               </Suspense>
               <Footer />
+             <Toaster /> 
             </div>
           </AuthProvider>
-        </WagmiConfig>
+        </WagmiProvider>
       </ErrorBoundary>
       </body>
     </html>

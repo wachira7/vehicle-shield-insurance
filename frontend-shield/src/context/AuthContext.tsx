@@ -5,6 +5,7 @@ import { auth } from '@/lib/firebase'
 import { FirebaseError } from 'firebase/app'
 import { useRouter } from 'next/navigation'
 import { LoadingScreen } from '@/app/components/common/LoadingScreen'
+import { useAccount } from 'wagmi'
 
 interface PasswordValidation {
   isValid: boolean;
@@ -55,11 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  
+  // Get wallet state from wagmi
+  const { address, isConnected } = useAccount()
 
+  // Listen for Firebase auth state and wallet changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser(user)
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // Store wallet address in user metadata if connected
+        if (isConnected && address) {
+          firebaseUser.getIdTokenResult(true).then(() => {
+            // Update user metadata in your backend/database here
+            // This is where you'd store the wallet address associated with the user
+            console.log('Wallet connected:', address)
+          })
+        }
+        setUser(firebaseUser)
       } else {
         setUser(null)
       }
@@ -67,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [address, isConnected])
 
   const handleAuthError = (error: unknown) => {
     if (error instanceof FirebaseError) {
@@ -108,6 +121,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       if (result.user) {
+        // If wallet is already connected, associate it with the user
+        if (isConnected && address) {
+          // Update user metadata in your backend/database here
+          console.log('Associating wallet:', address)
+        }
         router.push('/dashboard')
       }
     } catch (error) {
@@ -123,6 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearError()
       const result = await signInWithEmailAndPassword(auth, email, password)
       if (result.user) {
+        // If wallet is already connected, associate it with the user
+        if (isConnected && address) {
+          // Update user metadata in your backend/database here
+          console.log('Associating wallet:', address)
+        }
         router.push('/dashboard')
       }
     } catch (error) {
@@ -145,6 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const result = await createUserWithEmailAndPassword(auth, email, password)
       if (result.user) {
+        // If wallet is already connected, associate it with the user
+        if (isConnected && address) {
+          // Update user metadata in your backend/database here
+          console.log('Associating wallet:', address)
+        }
         router.push('/dashboard')
       }
     } catch (error) {
@@ -173,6 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       clearError()
       await signOut(auth)
+      // No need to manually disconnect wallet here
+      // Your ConnectButton component handles that through wagmi
       router.push('/')
     } catch (error) {
       handleAuthError(error)

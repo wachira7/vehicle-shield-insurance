@@ -12,6 +12,7 @@ interface ClaimData {
     amount: bigint;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROCESSING';
     timestamp: bigint;
+    claimId: number;
     // Add other fields from your smart contract
 }
 

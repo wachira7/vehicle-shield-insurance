@@ -25,6 +25,8 @@ interface FormattedPolicyData {
     startDate: Date;
     endDate: Date;
     isActive: boolean;
+    owner: string;
+    policyId: number;
     // Add other fields
 }
 export const usePolicy = () => {
