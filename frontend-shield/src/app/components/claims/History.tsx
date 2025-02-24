@@ -16,10 +16,10 @@ interface ClaimData {
     timestamp: bigint;
   }
   
-  interface ClaimsHistoryProps {
+  interface ClaimHistoryProps {
     policyId: number;
   }
-const ClaimsHistory = ({ policyId }: ClaimsHistoryProps) => {
+const ClaimsHistory = ({ policyId }: ClaimHistoryProps) => {
   const { getClaimHistory, isLoading } = useClaim();
   const [claims, setClaims] = useState<ClaimData[]>([]);
 

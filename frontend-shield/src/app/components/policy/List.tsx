@@ -19,6 +19,7 @@ interface PolicyData {
 
 interface PolicyListProps {
   userAddress: string;
+  onSelectPolicy?: (policyId: number | null) => void;
 }
 
 interface PolicyStatus {
@@ -26,7 +27,7 @@ interface PolicyStatus {
   icon: LucideIcon;
   color: string;
 }
-const PolicyList = ({ userAddress }: PolicyListProps) => {
+const PolicyList = ({ userAddress ,onSelectPolicy }: PolicyListProps) => {
   const { getUserPolicies, getPolicyDetails, isLoading } = usePolicy();
   const [policies, setPolicies] = useState<PolicyData[]>([]);
 
@@ -116,7 +117,7 @@ const PolicyList = ({ userAddress }: PolicyListProps) => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => {/* Add navigation to policy details */}}
+                          onClick={() => onSelectPolicy && onSelectPolicy(policy.policyId)}
                         >
                           View Details
                         </Button>

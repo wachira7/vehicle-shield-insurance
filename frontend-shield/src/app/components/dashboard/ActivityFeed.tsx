@@ -9,6 +9,7 @@ interface Activity {
   action: string;
   timestamp: Date;
   details: string;
+  policyId?: number; 
 }
 
 const ActivityFeed = ({ activities }: { activities: Activity[] }) => {
