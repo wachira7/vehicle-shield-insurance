@@ -81,8 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const account = useAccount();
     address = account.address;
     isConnected = account.isConnected ?? false;
-  } catch (error: unknown) {
-    console.error('Wagmi provider error:', (error as Error).message);
+  } catch  {
+    // If WagmiProvider isn't available yet, we'll use the default values
+    console.log('Wagmi provider not available yet');
   }
   // Listen for Firebase auth state and wallet changes
   useEffect(() => {
