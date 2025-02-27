@@ -1,11 +1,6 @@
-//Create a client component for the actual layout (src/app/layout-client.tsx)
 'use client';
 
-import { useState, useEffect } from 'react';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { config } from '@/config/wagmi';
-import { Suspense } from 'react';
+import { Suspense} from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from '@/app/components/ui/toaster';
 import Header from '@/app/components/layout/Header';
@@ -13,22 +8,17 @@ import Footer from '@/app/components/layout/Footer';
 import Loading from '@/app/components/common/Loading';
 import { ErrorBoundary } from '@/app/components/common/ErrorBoundary';
 import { usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 
-const queryClient = new QueryClient();
-
-function ClientOnly({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
+// Create the wrapper component that will load Wagmi dynamically
+const WagmiWrapper = dynamic(
+  () => import('@/app/components/WagmiWrapper').then((mod) => mod.WagmiWrapper),
+  { 
+    ssr: false,
+    loading: () => <Loading />
   }
+);
 
-  return <>{children}</>;
-}
 export default function ClientLayout({
   children,
 }: {
@@ -39,9 +29,7 @@ export default function ClientLayout({
 
   return (
     <ErrorBoundary>
-      <ClientOnly>
-      <WagmiProvider config={config}>
-       <QueryClientProvider client={queryClient}>
+      <WagmiWrapper>
         <AuthProvider>
           <div className="flex flex-col min-h-screen">
             {/* Only show Header on non-dashboard pages */}
@@ -59,9 +47,7 @@ export default function ClientLayout({
             <Toaster />
           </div>
         </AuthProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-      </ClientOnly>
+      </WagmiWrapper>
     </ErrorBoundary>
   );
 }
