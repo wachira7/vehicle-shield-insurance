@@ -73,8 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Safe access to wagmi hooks with default values
   // This will work even if Wagmi context isn't available yet
-  const { address, isConnected = false } = useAccount();
-
+  let address: string | undefined;
+  let isConnected = false;
+  
+  try {
+    // Only attempt to use the hook if it's available
+    const account = useAccount();
+    address = account.address;
+    isConnected = account.isConnected ?? false;
+  } catch (error: unknown) {
+    console.error('Wagmi provider error:', (error as Error).message);
+  }
   // Listen for Firebase auth state and wallet changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
