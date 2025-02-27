@@ -1,3 +1,4 @@
+//../vehicle/Registration.tsx
 import React, { useState } from 'react';
 import { useVehicle } from '@/app/hooks/useVehicle';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -7,7 +8,10 @@ import { Button } from '@/app/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
 import { INSURANCE_CONSTANTS } from '@/app/config/constants';
 
-const VehicleRegistration = () => {
+interface VehicleRegistrationProps {
+  onSuccess: (regPlate: string) => void;
+}
+const VehicleRegistration: React.FC<VehicleRegistrationProps> = ({ onSuccess }) => {
   const { registerVehicle, isLoading } = useVehicle();
   const [formData, setFormData] = useState({
     regPlate: '',
@@ -66,7 +70,7 @@ const VehicleRegistration = () => {
       if (result.error) throw result.error;
       
       // Clear form or redirect based on success
-      
+      onSuccess(formData.regPlate);
     } catch (error) {
       setError((error as Error).message || 'Failed to register vehicle');
     }

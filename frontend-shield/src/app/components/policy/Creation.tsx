@@ -10,6 +10,7 @@ import { INSURANCE_CONSTANTS } from '@/app/config/constants';
 
 interface PolicyCreationProps {
     vehicleRegPlate: string;
+    onSuccess: () => void;
   }
   
   interface PolicyFormData {

@@ -12,6 +12,8 @@ type PhotoType = typeof PHOTO_REQUIREMENTS.acceptedTypes[number]; // "image/jpeg
 
 interface PhotoUploadProps {
   regPlate: string;
+  onSuccess?: (photos: Record<string, File>) => Promise<void>
+  onCancel?: () => void
 }
 
 interface Photo extends File {

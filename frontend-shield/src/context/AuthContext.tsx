@@ -1,11 +1,13 @@
+//src/context/AuthContext.tsx
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User } from 'firebase/auth'
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User, updateProfile } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { FirebaseError } from 'firebase/app'
 import { useRouter } from 'next/navigation'
 import { LoadingScreen } from '@/app/components/common/LoadingScreen'
 import { useAccount } from 'wagmi'
+import { toast } from 'react-hot-toast';
 
 interface PasswordValidation {
   isValid: boolean;
@@ -22,6 +24,17 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<boolean>;
   logout: () => Promise<void>;
   clearError: () => void;
+  updateUserProfile:  (profileData: UserProfileData) => Promise<boolean>;
+}
+
+type UserProfileData = {
+  displayName?: string;
+  photoURL?: string;
+  phoneNumber?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 const validatePassword = (password: string): PasswordValidation => {
@@ -211,6 +224,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const updateUserProfile = async (profileData: UserProfileData): Promise<boolean> => {
+    try {
+      setLoading(true);
+      clearError();
+      
+      // Ensure user is logged in
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Update Firebase profile (only supports displayName and photoURL)
+      const firebaseUpdates: { displayName?: string; photoURL?: string } = {};
+      
+      if (profileData.displayName) {
+        firebaseUpdates.displayName = profileData.displayName;
+      }
+      
+      if (profileData.photoURL) {
+        firebaseUpdates.photoURL = profileData.photoURL;
+      }
+      
+      // Update Firebase profile if we have fields to update
+      if (Object.keys(firebaseUpdates).length > 0) {
+        await updateProfile( user, firebaseUpdates);
+      }
+      
+      // For additional fields (comments with Firestore example included)
+      console.log('Additional profile data to store in database:', {
+        userId: user.uid,
+        phoneNumber: profileData.phoneNumber,
+        address: profileData.address,
+        city: profileData.city,
+        postalCode: profileData.postalCode,
+        country: profileData.country
+      });
+      
+      toast.success('Profile updated successfully');
+      
+      // Force refresh the user object to get updated values
+      await user.reload();
+      
+      return true;
+    } catch (error) {
+      handleAuthError(error);
+      toast.error('Failed to update profile');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const value = {
     user,
     loading,
@@ -220,7 +284,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUpWithEmail,
     resetPassword,
     logout,
-    clearError
+    clearError,
+    updateUserProfile
   }
 
   return (

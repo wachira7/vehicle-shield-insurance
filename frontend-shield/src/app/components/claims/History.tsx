@@ -18,6 +18,7 @@ interface ClaimData {
   
   interface ClaimHistoryProps {
     policyId: number;
+    onSelectClaim: (claimId: number) => void;
   }
 const ClaimsHistory = ({ policyId }: ClaimHistoryProps) => {
   const { getClaimHistory, isLoading } = useClaim();

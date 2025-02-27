@@ -1,3 +1,4 @@
+//../vehicle/VehicleDetails.tsx
 import React, { useEffect, useState } from 'react';
 import { useVehicle } from '@/app/hooks/useVehicle';
 import { formatEther } from 'viem';
