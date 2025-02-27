@@ -1,6 +1,7 @@
 //Create a client component for the actual layout (src/app/layout-client.tsx)
 'use client';
 
+import { useState, useEffect } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '@/config/wagmi';
@@ -15,6 +16,19 @@ import { usePathname } from 'next/navigation';
 
 const queryClient = new QueryClient();
 
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
 export default function ClientLayout({
   children,
 }: {
@@ -25,6 +39,7 @@ export default function ClientLayout({
 
   return (
     <ErrorBoundary>
+      <ClientOnly>
       <WagmiProvider config={config}>
        <QueryClientProvider client={queryClient}>
         <AuthProvider>
@@ -46,6 +61,7 @@ export default function ClientLayout({
         </AuthProvider>
         </QueryClientProvider>
       </WagmiProvider>
+      </ClientOnly>
     </ErrorBoundary>
   );
 }
