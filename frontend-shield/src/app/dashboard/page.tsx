@@ -130,14 +130,17 @@ export default function DashboardPage() {
               <ClaimSubmission policyId={selectedPolicyId} />
             )}
             {selectedPolicyId && (
-              <ClaimsHistory policyId={selectedPolicyId} />
+              <ClaimsHistory 
+                policyId={selectedPolicyId} 
+                onSelectClaim={(claimId: number) => console.log(`Claim ${claimId} selected`)}/>
             )}
           </div>
 
           <div className="space-y-4">
             <h2 className="text-2xl font-bold">Vehicle Management</h2>
             {!selectedVehicle ? (
-              <VehicleRegistration />
+              <VehicleRegistration 
+                onSuccess={(regPlate: string) => console.log(`Vehicle registered with plate ${regPlate}`)}/>
             ) : (
               <VehicleDetails regPlate={selectedVehicle} />
             )}
