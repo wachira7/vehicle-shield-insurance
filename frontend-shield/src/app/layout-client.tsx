@@ -2,6 +2,7 @@
 'use client';
 
 import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '@/config/wagmi';
 import { Suspense } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
@@ -11,6 +12,8 @@ import Footer from '@/app/components/layout/Footer';
 import Loading from '@/app/components/common/Loading';
 import { ErrorBoundary } from '@/app/components/common/ErrorBoundary';
 import { usePathname } from 'next/navigation';
+
+const queryClient = new QueryClient();
 
 export default function ClientLayout({
   children,
@@ -23,6 +26,7 @@ export default function ClientLayout({
   return (
     <ErrorBoundary>
       <WagmiProvider config={config}>
+       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <div className="flex flex-col min-h-screen">
             {/* Only show Header on non-dashboard pages */}
@@ -40,6 +44,7 @@ export default function ClientLayout({
             <Toaster />
           </div>
         </AuthProvider>
+        </QueryClientProvider>
       </WagmiProvider>
     </ErrorBoundary>
   );
