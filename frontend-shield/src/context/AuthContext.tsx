@@ -1,4 +1,3 @@
-//src/context/AuthContext.tsx
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User, updateProfile } from 'firebase/auth'
@@ -25,6 +24,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   clearError: () => void;
   updateUserProfile:  (profileData: UserProfileData) => Promise<boolean>;
+  walletAddress: string | undefined;
+  isWalletConnected: boolean;
 }
 
 type UserProfileData = {
@@ -70,8 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   
-  // Get wallet state from wagmi
-  const { address, isConnected } = useAccount()
+  // Safe access to wagmi hooks with default values
+  // This will work even if Wagmi context isn't available yet
+  const { address, isConnected = false } = useAccount();
 
   // Listen for Firebase auth state and wallet changes
   useEffect(() => {
@@ -285,7 +287,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     logout,
     clearError,
-    updateUserProfile
+    updateUserProfile,
+    walletAddress: address,
+    isWalletConnected: isConnected
   }
 
   return (
