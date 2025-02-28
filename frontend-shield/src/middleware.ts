@@ -1,11 +1,11 @@
-//src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const authCookie = request.cookies.get('auth');
+  // Check for either the HTTP-only auth token or client-side status
+  const authToken = request.cookies.get('auth-token');
+  const authStatus = request.cookies.get('auth-status');
   
-  // Updated to reflect new dashboard/* route structure
   const protectedPaths = [
     '/dashboard',
     '/dashboard/vehicles',
@@ -20,7 +20,7 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(`${path}/`)
   );
 
-  if (isProtectedPath && !authCookie) {
+  if (isProtectedPath && !authToken && !authStatus) {
     return NextResponse.redirect(new URL('/auth', request.url));
   }
 
@@ -28,6 +28,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Simplified matcher since all protected routes are under /dashboard now
   matcher: ['/dashboard/:path*'],
 };

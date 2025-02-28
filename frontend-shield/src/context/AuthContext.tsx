@@ -1,4 +1,7 @@
+//src/context/AuthContext.tsx
 'use client'
+import Cookies from 'js-cookie';
+import { getIdToken } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User, updateProfile } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
@@ -107,6 +110,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe()
   }, [address, isConnected])
 
+  const setAuthCookie = async (user: User) => {
+    try {
+      // Get the Firebase ID token
+      const token = await getIdToken(user, true);
+      
+      // Set as HTTP-only cookie via API endpoint
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to set authentication cookie');
+      }
+      
+      // For client-side usage, set a non-sensitive flag
+      Cookies.set('auth-status', 'authenticated', { expires: 7 });
+      
+      return true;
+    } catch (error) {
+      console.error('Error setting auth cookie:', error);
+      return false;
+    }
+  };
+  
   const handleAuthError = (error: unknown) => {
     if (error instanceof FirebaseError) {
       switch (error.code) {
@@ -151,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Update user metadata in your backend/database here
           console.log('Associating wallet:', address)
         }
+        await setAuthCookie(result.user);
         router.push('/dashboard')
       }
     } catch (error) {
@@ -171,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Update user metadata in your backend/database here
           console.log('Associating wallet:', address)
         }
+        await setAuthCookie(result.user);
         router.push('/dashboard')
       }
     } catch (error) {
@@ -190,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(passwordValidation.errors.join('\n'));
         return;
       }
-
+  
       const result = await createUserWithEmailAndPassword(auth, email, password)
       if (result.user) {
         // If wallet is already connected, associate it with the user
@@ -198,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Update user metadata in your backend/database here
           console.log('Associating wallet:', address)
         }
+        await setAuthCookie(result.user);
         router.push('/dashboard')
       }
     } catch (error) {
@@ -226,8 +260,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       clearError()
       await signOut(auth)
-      // No need to manually disconnect wallet here
-      // Your ConnectButton component handles that through wagmi
+      
+      // Clear HTTP-only cookie via API
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      
+      // Clear client-side cookie
+      Cookies.remove('auth-status');
+      
       router.push('/')
     } catch (error) {
       handleAuthError(error)
