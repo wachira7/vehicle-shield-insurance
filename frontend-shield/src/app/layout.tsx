@@ -1,4 +1,4 @@
-//  (src/app/layout-server.tsx)
+//  (src/app/layout.tsx)
 import { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import ClientLayout from './layout-client';

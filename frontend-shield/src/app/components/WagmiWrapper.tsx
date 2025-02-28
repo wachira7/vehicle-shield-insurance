@@ -1,3 +1,4 @@
+//src/app/components/WagmiWrapper.tsx
 'use client';
 
 import { ReactNode, useEffect, useState, memo } from 'react';

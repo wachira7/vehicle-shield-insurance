@@ -15,6 +15,7 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   
   const router = useRouter()
   const { address, isConnected, status } = useAccount()
@@ -22,22 +23,29 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
   const chainId = useChainId()
   const { switchChain, isPending: isSwitchingNetwork } = useSwitchChain()
 
+  // Set mounted state after hydration
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Handle redirect after successful connection
   useEffect(() => {
-    if (isConnected && redirectTo) {
+    if (mounted && isConnected && redirectTo) {
       router.push(redirectTo)
     }
-  }, [isConnected, redirectTo, router])
+  }, [mounted, isConnected, redirectTo, router])
 
   // Handle network switching
   useEffect(() => {
-    if (isConnected && chainId !== sepolia.id && switchChain) {
+    if (mounted && isConnected && chainId !== sepolia.id && switchChain) {
       switchChain({ chainId: sepolia.id })
     }
-  }, [chainId, isConnected, switchChain])
+  }, [mounted, chainId, isConnected, switchChain])
 
   // Handle connection status
   useEffect(() => {
+    if (!mounted) return
+    
     if (status === 'connecting') {
       setIsLoading(true)
       setError(null)
@@ -48,7 +56,7 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
       setIsLoading(false)
       setError(null)
     }
-  }, [status])
+  }, [mounted, status])
 
   // Error handling
   const handleError = (error: Error) => {
@@ -66,6 +74,13 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Don't render anything meaningful until after client-side hydration
+  if (!mounted) {
+    return <button className={`bg-blue-600 text-white px-6 py-2 rounded-lg opacity-50 ${className}`}>
+      Connect Wallet
+    </button>
   }
 
   // If connected, show address and disconnect button
