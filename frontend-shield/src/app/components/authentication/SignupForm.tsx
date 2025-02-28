@@ -175,8 +175,13 @@ export const SignupForm = ({ onLoginClick }: SignupFormProps) => {
                  bg-white text-gray-700 py-2 rounded-md hover:bg-gray-50 
                  transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <Image src="/images/7123025_logo_google_g_icon.png" alt="Google logo" className="w-5 h-5" />
-        Google
+       <Image 
+          src="/images/7123025_logo_google_g_icon.png" 
+          alt="Google logo" 
+          width={20}
+          height={20}
+          className="w-5 h-5" 
+        />
       </button>
 
       <div className="text-center text-sm">
