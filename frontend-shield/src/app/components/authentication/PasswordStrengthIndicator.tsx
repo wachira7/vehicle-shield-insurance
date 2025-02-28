@@ -38,11 +38,11 @@ interface PasswordStrengthProps {
   
     const getStrengthColor = () => {
       const percentage = getStrengthPercentage();
-      if (percentage <= 20) return 'Very Weak';
-      if (percentage <= 40) return 'Weak';
-      if (percentage <= 60) return 'Medium';
-      if (percentage <= 80) return 'Strong';
-      return 'Very Strong';
+      if (percentage <= 20) return 'bg-red-500';
+      if (percentage <= 40) return 'bg-orange-500';
+      if (percentage <= 60) return 'bg-yellow-500';
+      if (percentage <= 80) return 'bg-blue-500';
+      return 'bg-green-500';
     }
   
     return (

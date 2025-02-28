@@ -111,7 +111,8 @@ export const SignupForm = ({ onLoginClick }: SignupFormProps) => {
           )}
         </div>
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+        <div className="relative">
           <input
             id="confirmPassword"
             type={showPassword ? "text" : "password"}
@@ -121,25 +122,34 @@ export const SignupForm = ({ onLoginClick }: SignupFormProps) => {
               if (error) clearError()
               setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))
             }}
-            className={`mt-1 block w-full rounded-md border px-3 py-2 transition-colors duration-200 ${
+            className={`mt-1 block w-full rounded-md border px-3 py-2 pr-10 transition-colors duration-200 ${
               formData.confirmPassword
                 ? doPasswordsMatch
                   ? 'border-green-500'
                   : 'border-red-500'
-                : 'border-gray-300'
+                : 'border-black-300'
             }`}
             required
           />
-          {formData.confirmPassword && !doPasswordsMatch && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-1 text-sm text-red-500"
-            >
-              Passwords do not match
-            </motion.p>
-          )}
-        </div>
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            title={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+      </div>
+      {formData.confirmPassword && !doPasswordsMatch && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-1 text-sm text-red-500"
+        >
+          Passwords do not match
+        </motion.p>
+      )}
+       </div>
         {error && (
           <motion.p
             initial={{ opacity: 0, y: -5 }}
