@@ -3,7 +3,8 @@ import { useState, useEffect } from "react"
 import { Shield, Car, FileText, Lock, ChevronDown, ChevronUp, Star, CheckCircle, XCircle, Sun, Moon, Info, ArrowRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import Link from 'next/link';
+// import { useRouter } from "next/navigation"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
@@ -12,7 +13,7 @@ import { Card, CardContent } from "@/app/components/ui/card"
 const Page = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
   const [darkMode, setDarkMode] = useState(false)
-  const router = useRouter()
+  // const router = useRouter()
 
   useEffect(() => {
     if (darkMode) {
@@ -26,9 +27,9 @@ const Page = () => {
     setDarkMode(!darkMode)
   }
 
-  const handleGetStarted = () => {
-    router.push("/auth")
-  }
+  // const handleGetStarted = () => {
+  //   router.push("/auth")
+  // }
   const features = [
     {
       icon: Car,
@@ -172,13 +173,14 @@ const Page = () => {
               Protect your vehicle with blockchain-powered insurance that is transparent, efficient, and hassle-free.
             </p>
             
-            <Button
-              size="lg"
-              onClick={() => handleGetStarted()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-lg text-lg font-semibold transition-all"
-            >
-              Get Started <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            <Link href="/auth">
+              <Button
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-lg text-lg font-semibold transition-all"
+              >
+                Get Started <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </motion.div>
 
@@ -453,14 +455,15 @@ const Page = () => {
             <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
               Join the future of vehicle insurance today. Get started with VehicleShield.
             </p>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => handleGetStarted()}
-              className="bg-white text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-100 px-8 py-6 rounded-lg text-lg font-semibold transition-all"
-            >
-              Get Started <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            <Link href="/auth">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="bg-white text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-100 px-8 py-6 rounded-lg text-lg font-semibold transition-all"
+              >
+                Get Started <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </motion.div>
       </div>

@@ -1,8 +1,8 @@
 // src/app/auth/page.tsx
 'use client'
 import { useState } from 'react'
-import { LoginForm } from '../components/authentication/LoginForm'
 import { SignupForm } from '../components/authentication/SignupForm'
+import { LoginForm } from '../components/authentication/LoginForm'
 import { PasswordReset } from '../components/authentication/PasswordReset'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LoadingScreen } from '../components/common/LoadingScreen'
