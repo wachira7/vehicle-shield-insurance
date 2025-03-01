@@ -94,7 +94,7 @@ export default function AuthPage() {
                   onClick={() => setView('signup')}
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Sign up
+                  {/* Sign up */}
                 </button>
               </p>
             ) : view === 'signup' ? (
@@ -104,7 +104,7 @@ export default function AuthPage() {
                   onClick={() => setView('login')}
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Log in
+                  {/* Log in */}
                 </button>
               </p>
             ) : null}
