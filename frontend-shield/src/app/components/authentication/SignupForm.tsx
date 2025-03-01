@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff } from 'lucide-react'
+import { HiEye, HiEyeOff } from 'react-icons/hi';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator'
 import Image from 'next/image'
 
@@ -94,7 +94,7 @@ export const SignupForm = ({ onLoginClick }: SignupFormProps) => {
               title={showPassword ? "Hide password" : "Show password"}
               className="absolute right-3 top-1/2 -translate-y-1/2"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}
             </button>
           </div>
           {formData.password && (
@@ -134,10 +134,9 @@ export const SignupForm = ({ onLoginClick }: SignupFormProps) => {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            title={showPassword ? "Hide password" : "Show password"}
             className="absolute right-3 top-1/2 -translate-y-1/2"
           >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            {showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}
           </button>
       </div>
       {formData.confirmPassword && !doPasswordsMatch && (

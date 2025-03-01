@@ -205,3 +205,22 @@ body {
   }
 }
 
+/* Add these styles to fix input text visibility */
+input {
+  color: #333 !important;
+}
+
+/* Ensure form input text is visible */
+.form-input, 
+input[type="email"], 
+input[type="password"],
+input[type="text"] {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Fix input placeholders */
+input::placeholder {
+  color: #9CA3AF !important;
+  opacity: 1;
+}
