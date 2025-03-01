@@ -89,7 +89,7 @@ export default function AuthPage() {
           <div className="mt-6 text-center text-sm">
             {view === 'login' ? (
               <p className="text-gray-600">
-                You do not have an account?{' '}
+                {/* You do not have an account?{' '} */}
                 <button
                   onClick={() => setView('signup')}
                   className="text-blue-600 hover:text-blue-700 font-medium"
@@ -99,7 +99,7 @@ export default function AuthPage() {
               </p>
             ) : view === 'signup' ? (
               <p className="text-gray-600">
-                Already have an account?{' '}
+                {/* Already have an account?{' '} */}
                 <button
                   onClick={() => setView('login')}
                   className="text-blue-600 hover:text-blue-700 font-medium"

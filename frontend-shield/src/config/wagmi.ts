@@ -1,3 +1,4 @@
+//src/config/wagmi.ts
 "use client";
 import { createConfig, http, createStorage } from "wagmi";
 import { sepolia } from "viem/chains";

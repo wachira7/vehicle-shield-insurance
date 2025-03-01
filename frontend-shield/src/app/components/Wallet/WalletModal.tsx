@@ -1,6 +1,8 @@
+//src/app/components/Wallet/WalletModal.tsx
 'use client'
-import { useConnect } from 'wagmi'
+import { useConnect, type Connector } from 'wagmi'
 import { Wallet, Coins, CreditCard, Plug, Shield, Ghost, LucideIcon } from 'lucide-react'
+import { useEffect } from 'react'
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -13,14 +15,23 @@ type WalletOption = {
   id: string;
 }
 
+
 export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
   const { connect, connectors, error, isPending } = useConnect()
+  
+  // Debug: Log available connectors
+  useEffect(() => {
+    if (isOpen) {
+      console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
+    }
+  }, [isOpen, connectors]);
 
+  // Update these IDs based on what's logged in the console
   const wallets: WalletOption[] = [
     {
       name: 'MetaMask',
       Icon: Wallet,
-      id: 'metaMask'
+      id: 'injected' // This should match the ID from wagmi
     },
     {
       name: 'Trust Wallet',
@@ -51,6 +62,12 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
 
   if (!isOpen) return null
 
+  const handleConnect = (connector: Connector) => {
+    console.log('Connecting with:', connector.id, connector.name);
+    connect({ connector });
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -62,15 +79,16 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
           {wallets.map((wallet) => {
             const connector = connectors.find(c => c.id === wallet.id)
             const { Icon } = wallet
+            
+            // Debug: Log when a connector is missing
+            if (!connector) {
+              console.log(`No connector found for ${wallet.name} with ID ${wallet.id}`);
+            }
+            
             return (
               <button
                 key={wallet.name}
-                onClick={() => {
-                  if (connector) {
-                    connect({ connector })
-                    onClose()
-                  }
-                }}
+                onClick={() => connector && handleConnect(connector)}
                 disabled={!connector?.ready || isPending}
                 className="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 
                          transition-colors duration-200 disabled:opacity-50"
