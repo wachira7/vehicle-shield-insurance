@@ -16,10 +16,14 @@ export function WagmiWrapper({ children }: { children: ReactNode }) {
     setMounted(true);
   }, []);
   
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        {mounted ? children : null}
+        {children }
       </QueryClientProvider>
     </WagmiProvider>
   );
