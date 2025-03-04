@@ -1,3 +1,4 @@
+//src/app/dashboard/policies/page.tsx
 'use client';import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +9,7 @@ import { usePolicy } from '@/app/hooks/usePolicy';
 import { useVehicle } from '@/app/hooks/useVehicle';
 import PolicyManagement from '@/app/components/policy/Management';
 import PolicyCreation from '@/app/components/policy/Creation';
+import { WalletCheck } from '@/app/components/Wallet/WalletCheck';
 import { Shield, Plus, Car } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -315,10 +317,15 @@ export default function PoliciesPage() {
               <CardDescription>Protect your vehicle with blockchain-based insurance</CardDescription>
             </CardHeader>
             <CardContent>
+             <WalletCheck
+                title="Connect Wallet to Create Policy"
+                message="You need to connect your wallet to create an insurance policy. This is required to process payments and create your smart contract policy."
+              >
               <PolicyCreation 
                 vehicleRegPlate={vehicleParam || ''} 
                 onSuccess={handlePolicyCreated}
               />
+              </WalletCheck>
             </CardContent>
           </Card>
         </TabsContent>

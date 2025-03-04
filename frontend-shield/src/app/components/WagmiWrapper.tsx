@@ -1,4 +1,3 @@
-// src/app/components/WagmiWrapper.tsx
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
@@ -23,7 +22,7 @@ export function WagmiWrapper({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        {children }
+        {children}
       </QueryClientProvider>
     </WagmiProvider>
   );

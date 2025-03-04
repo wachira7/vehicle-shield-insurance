@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import VehicleRegistration from '@/app/components/vehicle/Registration';
 import VehicleDetails from '@/app/components/vehicle/VehicleDetails';
 import PhotoUpload from '@/app/components/vehicle/PhotoUpload';
+import { WalletCheck } from '@/app/components/Wallet/WalletCheck';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Button } from '@/app/components/ui/button';
@@ -232,6 +233,10 @@ export default function VehiclesPage() {
                 <CardDescription>Upload and manage photos of your vehicle</CardDescription>
               </CardHeader>
               <CardContent>
+               <WalletCheck
+                  title="Connect Wallet to Manage Photos"
+                  message="You need to connect your wallet to upload and manage vehicle photos. This ensures your photos are securely stored and linked to your vehicle."
+                >
                 {showPhotoUpload ? (
                   <div className="space-y-4">
                     <PhotoUpload 
@@ -269,6 +274,7 @@ export default function VehiclesPage() {
                     </div>
                   </div>
                 )}
+                </WalletCheck>
               </CardContent>
             </Card>
           )}
@@ -283,11 +289,16 @@ export default function VehiclesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+             <WalletCheck 
+                title="Connect Wallet to Register Vehicle"
+                message="You need to connect your wallet to register a vehicle. This allows us to create a secure blockchain record of your vehicle."
+              >
               {/* Passing registerVehicle to make sure it's used */}
               <VehicleRegistration 
                 onSuccess={handleRegistrationSuccess} 
               
               />
+              </WalletCheck>
             </CardContent>
           </Card>
         </TabsContent>

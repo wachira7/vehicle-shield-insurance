@@ -1,3 +1,4 @@
+//src/app/dashboard/claims/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ import { useClaim } from '@/app/hooks/useClaim';
 import ClaimSubmission from '@/app/components/claims/Submission';
 import ClaimsHistory from '@/app/components/claims/History';
 import ClaimStatus from '@/app/components/claims/Status';
+import { WalletCheck } from '@/app/components/Wallet/WalletCheck';
 import { FileText, Plus, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { formatEther } from 'viem';
@@ -286,6 +288,10 @@ export default function ClaimsPage() {
               <CardDescription>File an insurance claim for your vehicle</CardDescription>
             </CardHeader>
             <CardContent>
+              <WalletCheck
+                title="Connect Wallet to Submit Claim"
+                message="You need to connect your wallet to submit an insurance claim. This verifies your identity and allows you to interact with your policy."
+              >
               {policiesWithClaims.length > 0 ? (
                 <>
                   {!selectedPolicyId ? (
@@ -345,6 +351,7 @@ export default function ClaimsPage() {
                   </Button>
                 </div>
               )}
+              </WalletCheck>
             </CardContent>
           </Card>
         </TabsContent>

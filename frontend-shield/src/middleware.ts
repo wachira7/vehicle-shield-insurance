@@ -20,6 +20,7 @@ export function middleware(request: NextRequest) {
     '/dashboard/policies', 
     '/dashboard/claims',
     '/dashboard/profile',
+    '/dashboard/notifications',
     '/dashboard/settings'
   ];
   
