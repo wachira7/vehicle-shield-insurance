@@ -16,26 +16,40 @@ const getStorage = () => {
   return createStorage({ storage: window.localStorage });
 }
 
+// Load environment variables with fallbacks
+const WALLET_CONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "";
+const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+
+// Debug logs for troubleshooting
+if (typeof window !== 'undefined') {
+  console.log("WalletConnect Project ID length:", WALLET_CONNECT_PROJECT_ID.length);
+  console.log("Alchemy API Key length:", ALCHEMY_API_KEY.length);
+}
+
 export const config = createConfig({
   chains: [sepolia],
   transports: {
     [sepolia.id]: http(
-      `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+      `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`
     )
   },
   connectors: [
-    injected(),
+    injected({
+      shimDisconnect: true,
+    }),
     walletConnect({
-      projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "",
+      projectId: WALLET_CONNECT_PROJECT_ID,
+      showQrModal: true,
       metadata: {
         name: 'VehicleShield',
         description: 'Blockchain-based Vehicle Insurance',
         url: getOrigin(),
-        icons: [`${getOrigin()}/logo.png`]
+        icons: [`${getOrigin()}/images/reshot-icon-insurance-car-XSU4P3RWKN.svg`]
       }
     }),
     coinbaseWallet({ 
       appName: 'VehicleShield',
+      appLogoUrl: `${getOrigin()}/images/reshot-icon-insurance-car-XSU4P3RWKN.svg`,
     })
   ],
   storage: getStorage()

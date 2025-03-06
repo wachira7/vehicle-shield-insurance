@@ -1,3 +1,4 @@
+// src/types/adraffy.d.ts
 declare module '@adraffy/words' {
   export const words: string[];
   export default words;

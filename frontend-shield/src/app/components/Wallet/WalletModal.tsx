@@ -1,8 +1,8 @@
 //src/app/components/Wallet/WalletModal.tsx
 'use client'
 import { useConnect, type Connector } from 'wagmi'
-import { Wallet, Coins, CreditCard, Plug, Shield, Ghost, LucideIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { Wallet, Coins, CreditCard, Plug, Shield, Ghost, LucideIcon, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -15,23 +15,30 @@ type WalletOption = {
   id: string;
 }
 
-
 export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
   const { connect, connectors, error, isPending } = useConnect()
+  const [isConnecting, setIsConnecting] = useState<string | null>(null)
   
+  // Reset connecting state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsConnecting(null)
+    }
+  }, [isOpen])
+
   // Debug: Log available connectors
   useEffect(() => {
     if (isOpen) {
       console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
     }
   }, [isOpen, connectors]);
-
-  // Update these IDs based on what's logged in the console
+  
+  // Map of wallet connectors
   const wallets: WalletOption[] = [
     {
       name: 'MetaMask',
       Icon: Wallet,
-      id: 'injected' // This should match the ID from wagmi
+      id: 'injected'
     },
     {
       name: 'Trust Wallet',
@@ -62,11 +69,20 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
 
   if (!isOpen) return null
 
-  const handleConnect = (connector: Connector) => {
-    console.log('Connecting with:', connector.id, connector.name);
-    connect({ connector });
-    onClose();
-  };
+  const handleConnect = async (connector: Connector) => {
+    try {
+      setIsConnecting(connector.id)
+      await connect({ connector })
+      onClose()
+    } catch (error) {
+      console.error('Connection error:', error)
+    } finally {
+      setIsConnecting(null)
+    }
+  }
+
+  // Check if WalletConnect is available
+  const hasWalletConnect = connectors.some(c => c.id === 'walletConnect')
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -75,35 +91,45 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
           <h3 className="text-xl font-semibold">Connect Wallet</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">×</button>
         </div>
+        
+        {!hasWalletConnect && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+            WalletConnect requires a project ID. Please check your environment configuration.
+          </div>
+        )}
+        
         <div className="grid grid-cols-2 gap-4">
           {wallets.map((wallet) => {
             const connector = connectors.find(c => c.id === wallet.id)
             const { Icon } = wallet
-            
-            // Debug: Log when a connector is missing
-            if (!connector) {
-              console.log(`No connector found for ${wallet.name} with ID ${wallet.id}`);
-            }
+            const isWalletConnecting = isConnecting === wallet.id
             
             return (
               <button
                 key={wallet.name}
                 onClick={() => connector && handleConnect(connector)}
-                disabled={!connector?.ready || isPending}
+                disabled={!connector?.ready || isPending || isConnecting !== null}
                 className="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 
                          transition-colors duration-200 disabled:opacity-50"
               >
-                <Icon className="w-10 h-10 mb-2 text-blue-600" />
+                {isWalletConnecting ? (
+                  <Loader2 className="w-10 h-10 mb-2 text-blue-600 animate-spin" />
+                ) : (
+                  <Icon className="w-10 h-10 mb-2 text-blue-600" />
+                )}
                 <span className="text-sm font-medium">{wallet.name}</span>
-                {isPending && 
-                  <span className="text-xs text-blue-600 mt-1">(connecting)</span>
+                {isWalletConnecting && 
+                  <span className="text-xs text-blue-600 mt-1">Connecting...</span>
+                }
+                {!connector && 
+                  <span className="text-xs text-red-500 mt-1">Not Available</span>
                 }
               </button>
             )
           })}
         </div>
         {error && (
-          <div className="mt-4 text-red-500 text-sm text-center">
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error.message}
           </div>
         )}
