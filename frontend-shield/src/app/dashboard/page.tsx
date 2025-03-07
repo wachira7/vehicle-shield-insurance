@@ -1,23 +1,25 @@
 //src/app/dashboard/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useDashboardData } from '@/app/hooks/userDashboardData';
 
 // UI Components
-import { Alert, AlertDescription } from '@/app/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { ConnectButton } from '@/app/components/Wallet/ConnectButton';
 
 // Claims Components
-import  ClaimSubmission  from '@/app/components/claims/Submission';
-import  ClaimsHistory  from '@/app/components/claims/History';
+import ClaimSubmission from '@/app/components/claims/Submission';
+import ClaimsHistory from '@/app/components/claims/History';
 // Policy Components
-import  PolicyList  from '@/app/components/policy/List';
-import  PolicyManagement  from '@/app/components/policy/Management';
+import PolicyList from '@/app/components/policy/List';
+import PolicyManagement from '@/app/components/policy/Management';
 // Vehicle Components
-import  VehicleRegistration  from '@/app/components/vehicle/Registration';
-import  VehicleDetails  from '@/app/components/vehicle/VehicleDetails';
+import VehicleRegistration from '@/app/components/vehicle/Registration';
+import VehicleDetails from '@/app/components/vehicle/VehicleDetails';
 
 // Dashboard Components
 import DashboardOverview from '@/app/components/dashboard/Overview';
@@ -26,11 +28,17 @@ import ActivityFeed from '@/app/components/dashboard/ActivityFeed';
 import PolicyStats from '@/app/components/dashboard/PolicyStats';
 import ClaimsList from '@/app/components/dashboard/ClaimsList';
 import ActionCard from '@/app/components/dashboard/ActionCard';
-import { Plus, FileText, Car } from 'lucide-react';
+import { Plus, FileText, Car, Info, Shield } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { address } = useAccount();
-  const { dashboardData, isLoading, error, activities } = useDashboardData(address);
+  // Client-side hydration handling
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const { address, isConnected } = useAccount();
+  const { dashboardData, isLoading, error, activities } = useDashboardData(address || "");
   const [selectedPolicyId, setSelectedPolicyId] = useState<number | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
 
@@ -57,28 +65,107 @@ export default function DashboardPage() {
       onClick: () => setSelectedVehicle(null)
     }
   ];
- 
-  if (!address) {
+
+  // Don't render anything meaningful until after client-side hydration
+  if (!mounted) {
+    return null;
+  }
+
+  // Public dashboard content for non-connected users
+  if (!isConnected) {
     return (
-      <Alert>
-        <AlertDescription>
-          Please connect your wallet to view the dashboard
-        </AlertDescription>
-      </Alert>
+      <div className="container mx-auto p-6 space-y-6">
+        <Alert className="bg-blue-50 border-blue-200">
+          <Info className="h-5 w-5 text-blue-600" />
+          <AlertTitle>Welcome to VehicleShield Dashboard</AlertTitle>
+          <AlertDescription>
+            Connect your wallet to access your personal insurance data, manage policies, and file claims.
+          </AlertDescription>
+          <div className="mt-4">
+            <ConnectButton className="bg-blue-600 hover:bg-blue-700" />
+          </div>
+        </Alert>
+
+        {/* Public dashboard content - platform statistics */}
+        <h2 className="text-2xl font-bold">Platform Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Policies</CardTitle>
+              <CardDescription>Total coverage on platform</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">2,345</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Claims Processed</CardTitle>
+              <CardDescription>Last 30 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">187</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Average Premium</CardTitle>
+              <CardDescription>Monthly cost</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">0.15 ETH</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Feature highlights */}
+        <h2 className="text-2xl font-bold mt-8">Our Features</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <Shield className="h-8 w-8 text-blue-600 mb-2" />
+              <CardTitle>Decentralized Coverage</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Blockchain-backed insurance policies with transparent terms and conditions.</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <FileText className="h-8 w-8 text-blue-600 mb-2" />
+              <CardTitle>Easy Claims</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Submit and track claims directly through our dashboard with minimal paperwork.</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Car className="h-8 w-8 text-blue-600 mb-2" />
+              <CardTitle>Vehicle Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Register multiple vehicles and manage all your policies in one place.</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* CTA */}
+        <Card className="mt-8 bg-gradient-to-r from-blue-500 to-blue-700 text-white">
+          <CardContent className="flex flex-col items-center justify-center p-8">
+            <h2 className="text-2xl font-bold mb-4">Ready to Get Started?</h2>
+            <p className="text-center mb-6">Connect your wallet now to explore your personalized dashboard.</p>
+            <ConnectButton className="bg-white text-blue-700 hover:bg-gray-100" />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
+  // Loading state
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="container mx-auto p-6 space-y-4">
         <Skeleton className="h-8 w-[200px]" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Skeleton className="h-32" />
@@ -90,9 +177,24 @@ export default function DashboardPage() {
     );
   }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Convert the Ethereum address to a string to satisfy TypeScript
+  const userAddressString = address as string;
+
+  // Connected user dashboard
   return (
     <div className="container mx-auto p-6 space-y-8">
-      <DashboardOverview userAddress={address} />
+      <DashboardOverview userAddress={userAddressString} />
       <Stats data={dashboardData} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -104,9 +206,10 @@ export default function DashboardPage() {
               active={dashboardData.activePolicies}
               expiringSoon={0}
               totalCoverage={dashboardData.totalCoverage}
+              userAddress={userAddressString}
             />
             <PolicyList 
-              userAddress={address} 
+              userAddress={userAddressString} 
               onSelectPolicy={setSelectedPolicyId}
             />
             {selectedPolicyId && (

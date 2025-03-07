@@ -8,6 +8,7 @@ interface PolicyStatsProps {
   active: number;
   expiringSoon: number;
   totalCoverage: string;
+  userAddress: string;
 }
 
 const PolicyStats = ({ active, expiringSoon, totalCoverage }: PolicyStatsProps) => {
