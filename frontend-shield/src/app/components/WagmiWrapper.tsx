@@ -1,4 +1,3 @@
-//src/app/components/WagmiWrapper.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,9 +13,48 @@ interface WagmiWrapperProps {
 // Create a client
 const queryClient = new QueryClient();
 
+// Define types for Ethereum providers
+interface EthereumProvider {
+  isMetaMask?: boolean;
+  isTrust?: boolean;
+  isTrustWallet?: boolean;
+  isCoinbaseWallet?: boolean;
+  providers?: EthereumProvider[];
+}
+
+// Helper function to safely access the ethereum provider
+const getEthereumProvider = (): EthereumProvider | null => {
+  if (typeof window === 'undefined' || !window.ethereum) return null;
+  return window.ethereum as unknown as EthereumProvider;
+};
+
 export function WagmiWrapper({ children }: WagmiWrapperProps) {
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Function to detect wallet conflicts
+  const detectWalletConflicts = () => {
+    const ethereum = getEthereumProvider();
+    if (!ethereum) return;
+    
+    // Debug provider info
+    console.log('Current ethereum provider:', {
+      isMetaMask: ethereum.isMetaMask,
+      isCoinbaseWallet: ethereum.isCoinbaseWallet,
+      isTrust: ethereum.isTrust || ethereum.isTrustWallet,
+      hasProviders: Boolean(ethereum.providers?.length)
+    });
+    
+    // Check if we have multiple providers
+    if (ethereum.providers?.length) {
+      console.log('Multiple wallet providers detected:', ethereum.providers.length);
+      console.log('Available providers:', ethereum.providers.map(p => ({
+        isMetaMask: p.isMetaMask,
+        isCoinbaseWallet: p.isCoinbaseWallet,
+        isTrust: p.isTrust || p.isTrustWallet
+      })));
+    }
+  };
 
   // Effect to handle hydration
   useEffect(() => {
@@ -26,6 +64,9 @@ export function WagmiWrapper({ children }: WagmiWrapperProps) {
         chains: config.chains.map(c => c.name),
         connectors: config.connectors.map(c => c.name),
       });
+      
+      // Detect wallet conflicts
+      detectWalletConflicts();
       
       // Set hydrated after initial render
       setHydrated(true);

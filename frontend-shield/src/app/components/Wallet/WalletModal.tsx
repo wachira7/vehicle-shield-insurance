@@ -1,14 +1,17 @@
-//src/app/components/Wallet/WalletModal.tsx
 'use client'
 import { useConnect } from 'wagmi'
-import { Wallet, CreditCard, Shield, Ghost, LucideIcon, Loader2 } from 'lucide-react'
+import { LucideIcon, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
+import { isMetaMaskAvailable, isTrustWalletAvailable, isPhantomAvailable, getMetaMaskProvider, getTrustWalletProvider } from '@/app/utils/ethereum-helpers'
 
 // Define types for Ethereum providers
 interface EthereumProvider {
   isMetaMask?: boolean;
   isTrust?: boolean;
   isTrustWallet?: boolean;
+  isCoinbaseWallet?: boolean;
+  isPhantom?: boolean;
   providers?: EthereumProvider[];
   request?: (args: {method: string; params?: unknown[]}) => Promise<unknown>;
 }
@@ -27,10 +30,11 @@ interface WalletModalProps {
 
 type WalletOption = {
   name: string;
-  Icon: LucideIcon;
+  Icon: LucideIcon | (() => JSX.Element);
   id: string;
   connectorId: string; // Exact ID of the connector to use
   checkAvailability?: () => boolean; // Function to check if wallet is available
+  getProvider?: () => EthereumProvider | null; // Function to get the specific provider
 }
 
 export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
@@ -52,83 +56,98 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
       }));
       console.log('Available connectors:', connectorsInfo);
       setDebugInfo(`Found ${connectors.length} connectors: ${connectors.map(c => c.id).join(', ')}`);
+      
+      // Debug ethereum providers
+      if (typeof window !== 'undefined' && window.ethereum) {
+        console.log('window.ethereum:', window.ethereum);
+        if (window.ethereum.providers) {
+          console.log('window.ethereum.providers:', window.ethereum.providers);
+        }
+      }
     }
   }, [isOpen, connectors]);
 
-  // Helper function to get the ethereum provider with proper typing
-  const getEthereumProvider = (): EthereumProvider | null => {
-    if (typeof window === 'undefined' || !window.ethereum) return null;
-    return window.ethereum as unknown as EthereumProvider;
-  };
+  // We're using the imported helper functions from ethereum-helpers.ts
 
-  // Helper function to detect MetaMask
-  const isMetaMaskAvailable = () => {
-    const provider = getEthereumProvider();
-    return Boolean(provider?.isMetaMask);
-  };
-
-  // Helper function to detect Trust Wallet
-  const isTrustWalletAvailable = () => {
-    const provider = getEthereumProvider();
-    return Boolean(provider?.isTrust || provider?.isTrustWallet);
-  };
-
-  // Helper function to detect Phantom
-  const isPhantomAvailable = () => {
-    if (typeof window === 'undefined') return false;
-    return Boolean(window.phantom);
-  };
-  
-  // Map of wallet connectors with availability checks
-  const wallets: WalletOption[] = [
-    {
-      name: 'MetaMask',
-      Icon: Wallet,
-      id: 'metamask',
-      connectorId: 'injected',
-      checkAvailability: isMetaMaskAvailable
-    },
-    {
-      name: 'Trust Wallet',
-      Icon: Shield, 
-      id: 'trust',
-      connectorId: 'injected',
-      checkAvailability: isTrustWalletAvailable
-    },
-    {
-      name: 'Phantom',
-      Icon: Ghost, 
-      id: 'phantom',
-      connectorId: 'injected',
-      checkAvailability: isPhantomAvailable
-    },
-    {
-      name: 'WalletConnect',
-      Icon: CreditCard,
-      id: 'walletconnect',
-      connectorId: 'walletConnect'
+  // This function handles special preparation before connecting to specific wallets
+  const prepareWalletConnection = async (walletId: string): Promise<boolean> => {
+    // Special case for MetaMask when multiple wallets are installed
+    if (walletId === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
+      const ethereum = window.ethereum as unknown as EthereumProvider;
+      
+      // Check if we have multiple providers
+      if (ethereum.providers?.length) {
+        // Find MetaMask provider
+        const metaMaskProvider = ethereum.providers.find(p => p.isMetaMask);
+        
+        if (metaMaskProvider) {
+          try {
+            console.log('Attempting direct interaction with MetaMask provider before connection');
+            
+            // Force the browser to use the MetaMask provider
+            // This is a way to override Coinbase or other wallets taking precedence
+            // This is an intentional override
+            window.ethereum = metaMaskProvider;
+            
+            // We'll no longer try to request accounts directly, just return true
+            // to let the connector handle it
+            return true;
+          } catch (err) {
+            console.error('Error preparing MetaMask connection:', err);
+            // Even if there's an error here, we'll continue with the connection
+            // as the error might be with the preparation, not the connection itself
+            return true;
+          }
+        }
+      }
     }
-  ]
-
-  if (!isOpen) return null
+    return true;
+  };
 
   const handleConnect = async (wallet: WalletOption) => {
     try {
       setConnectError(null);
       
       // Find the specified connector
-      const connector = connectors.find(c => c.id === wallet.connectorId);
+      let connector = connectors.find(c => c.id === wallet.connectorId);
       
+      // If not found directly, try some fallbacks
       if (!connector) {
+        // For injected wallets, try to find any injected connector
+        if (wallet.id === 'metamask' || wallet.id === 'trust' || wallet.id === 'phantom') {
+          connector = connectors.find(c => c.id === 'injected');
+        } 
+        // For WalletConnect, try variations on the name
+        else if (wallet.id === 'walletconnect') {
+          connector = connectors.find(c => 
+            c.id.toLowerCase().includes('walletconnect') ||
+            c.name.toLowerCase().includes('walletconnect')
+          );
+        }
+        // For Coinbase, try variations on the name
+        else if (wallet.id === 'coinbaseWallet') {
+          connector = connectors.find(c => 
+            c.id.toLowerCase().includes('coinbase') ||
+            c.name.toLowerCase().includes('coinbase')
+          );
+        }
+      }
+      
+      // If still not found, error out
+      if (!connector) {
+        console.error('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
         setConnectError(`No connector found for ${wallet.name}`);
         return;
       }
+      
+      // Log the connector we're using
+      console.log(`Using connector: ${connector.id} (${connector.name}) for ${wallet.name}`);
       
       console.log(`Attempting to connect with ${connector.id} (${connector.name}) for ${wallet.name}`);
       setDebugInfo(`Connecting to ${wallet.name} using ${connector.name}...`);
       setIsConnecting(wallet.name);
       
-      // Add custom parameters based on wallet type
+      // Check wallet availability
       if (wallet.id === 'metamask' && !isMetaMaskAvailable()) {
         setConnectError('MetaMask is not installed');
         return;
@@ -139,6 +158,13 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
       }
       else if (wallet.id === 'phantom' && !isPhantomAvailable()) {
         setConnectError('Phantom is not installed');
+        return;
+      }
+      
+      // Prepare wallet connection (special case for MetaMask)
+      const prepared = await prepareWalletConnection(wallet.id);
+      if (!prepared) {
+        setConnectError(`Failed to prepare ${wallet.name} connection`);
         return;
       }
       
@@ -157,6 +183,94 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
       setIsConnecting(null);
     }
   }
+
+  // Map of wallet connectors with availability checks
+  const wallets: WalletOption[] = [
+    {
+      name: 'MetaMask',
+      Icon: () => (
+        <div className="w-10 h-10 mb-2 relative">
+          <Image 
+            src="/images/wallet-icons/metamask.png" 
+            alt="MetaMask" 
+            fill
+            sizes="40px"
+            priority
+          />
+        </div>
+      ),
+      id: 'metamask',
+      connectorId: 'injected',
+      checkAvailability: isMetaMaskAvailable,
+      getProvider: getMetaMaskProvider
+    },
+    {
+      name: 'Trust Wallet',
+      Icon: () => (
+        <div className="w-10 h-10 mb-2 relative">
+          <Image 
+            src="/images/wallet-icons/trustwallet.png" 
+            alt="Trust Wallet" 
+            fill
+            sizes="40px"
+          />
+        </div>
+      ),
+      id: 'trust',
+      connectorId: 'injected',
+      checkAvailability: isTrustWalletAvailable,
+      getProvider: getTrustWalletProvider
+    },
+    {
+      name: 'Phantom',
+      Icon: () => (
+        <div className="w-10 h-10 mb-2 relative">
+          <Image 
+            src="/images/wallet-icons/phantom.png" 
+            alt="Phantom" 
+            fill
+            sizes="40px"
+          />
+        </div>
+      ),
+      id: 'phantom',
+      connectorId: 'injected',
+      checkAvailability: isPhantomAvailable
+    },
+    {
+      name: 'WalletConnect',
+      Icon: () => (
+        <div className="w-10 h-10 mb-2 relative">
+          <Image 
+            src="/images/wallet-icons/walletconnect.jpeg" 
+            alt="WalletConnect" 
+            fill
+            sizes="40px"
+            className="rounded-full"
+          />
+        </div>
+      ),
+      id: 'walletconnect',
+      connectorId: 'walletConnect'
+    },
+    {
+      name: 'Coinbase Wallet',
+      Icon: () => (
+        <div className="w-10 h-10 mb-2 relative">
+          <Image 
+            src="/images/wallet-icons/coinbase.jpeg" 
+            alt="Coinbase Wallet" 
+            fill
+            sizes="40px"
+          />
+        </div>
+      ),
+      id: 'coinbaseWallet',
+      connectorId: 'coinbaseWallet'
+    }
+  ]
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -193,7 +307,7 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
                 {isWalletConnecting ? (
                   <Loader2 className="w-10 h-10 mb-2 text-blue-600 animate-spin" />
                 ) : (
-                  <Icon className="w-10 h-10 mb-2 text-blue-600" />
+                  typeof Icon === 'function' ? <Icon /> : <div className="w-10 h-10 mb-2">{Icon}</div>
                 )}
                 <span className="text-sm font-medium">{name}</span>
                 {isWalletConnecting && 
@@ -222,6 +336,23 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
         <div className="mt-4 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500 overflow-x-auto">
           {debugInfo || "No debug information available"}
           {connectors.length === 0 && <p className="text-orange-500">No connectors available</p>}
+          <div className="mt-2">
+            <div className="font-semibold">Available Connectors:</div>
+            <ul className="list-disc pl-4">
+              {connectors.map((c, i) => (
+                <li key={i}>{c.name} (ID: {c.id}) - {c.ready ? "Ready" : "Not Ready"}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-2">
+            <div className="font-semibold">Wallet Detection:</div>
+            <ul className="list-disc pl-4">
+              <li>MetaMask: {isMetaMaskAvailable() ? "Available" : "Not Available"}</li>
+              <li>Trust Wallet: {isTrustWalletAvailable() ? "Available" : "Not Available"}</li>
+              <li>Phantom: {isPhantomAvailable() ? "Available" : "Not Available"}</li>
+              <li>window.ethereum: {typeof window !== 'undefined' && window.ethereum ? "Present" : "Not Present"}</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

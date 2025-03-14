@@ -1,8 +1,7 @@
-// src/config/wagmi.ts
 "use client"
 import { createConfig, http, createStorage } from 'wagmi'
 import { sepolia } from 'viem/chains'
-import { walletConnect, injected } from 'wagmi/connectors'
+import { walletConnect, injected, coinbaseWallet } from 'wagmi/connectors'
 
 // Safely get window origin for metadata
 const getOrigin = () => {
@@ -24,6 +23,15 @@ const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
 if (typeof window !== 'undefined') {
   console.log("WalletConnect Project ID available:", Boolean(WALLET_CONNECT_PROJECT_ID));
   console.log("Alchemy API Key available:", Boolean(ALCHEMY_API_KEY));
+  
+  // Debug ethereum provider if available
+  if (window.ethereum) {
+    console.log("Ethereum provider detected:", {
+      hasProviders: Array.isArray(window.ethereum.providers),
+      isMetaMask: Boolean(window.ethereum.isMetaMask),
+      isCoinbaseWallet: Boolean(window.ethereum.isCoinbaseWallet)
+    });
+  }
 }
 
 // Set up available connectors
@@ -38,6 +46,12 @@ export const config = createConfig({
     // Injected connector for browser wallets (MetaMask, Trust Wallet, etc.)
     injected({
       shimDisconnect: true,
+    }),
+    
+    // Explicitly add Coinbase Wallet connector
+    coinbaseWallet({
+      appName: 'VehicleShield',
+      appLogoUrl: `${getOrigin()}/images/reshot-icon-insurance-car-XSU4P3RWKN.svg`,
     }),
     
     // WalletConnect for mobile wallets
