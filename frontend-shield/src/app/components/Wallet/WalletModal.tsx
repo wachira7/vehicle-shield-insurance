@@ -3,7 +3,7 @@ import { useConnect } from 'wagmi'
 import { LucideIcon, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { isMetaMaskAvailable, isTrustWalletAvailable, isPhantomAvailable, getMetaMaskProvider, getTrustWalletProvider } from '@/app/utils/ethereum-helpers'
+import { isMetaMaskAvailable, isTrustWalletAvailable, isPhantomAvailable, isCoinbaseWalletAvailable, getMetaMaskProvider, getTrustWalletProvider } from '@/app/utils/ethereum-helpers';
 
 // Define types for Ethereum providers
 interface EthereumProvider {
@@ -12,15 +12,22 @@ interface EthereumProvider {
   isTrustWallet?: boolean;
   isCoinbaseWallet?: boolean;
   isPhantom?: boolean;
+  isBraveWallet?: boolean; // Added for Brave wallet detection
   providers?: EthereumProvider[];
   request?: (args: {method: string; params?: unknown[]}) => Promise<unknown>;
 }
 
-// Only declare phantom since ethereum is already declared elsewhere
-declare global {
-  interface Window {
-    phantom?: unknown;
-  }
+// Define type for Phantom provider
+interface PhantomProvider {
+  solana?: unknown;
+  ethereum?: unknown;
+  isPhantom?: boolean;
+}
+
+// Extended window interface for type safety
+interface ExtendedWindow extends Window {
+  ethereum?: EthereumProvider;
+  phantom?: PhantomProvider;
 }
 
 interface WalletModalProps {
@@ -60,48 +67,119 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
       // Debug ethereum providers
       if (typeof window !== 'undefined' && window.ethereum) {
         console.log('window.ethereum:', window.ethereum);
-        if (window.ethereum.providers) {
-          console.log('window.ethereum.providers:', window.ethereum.providers);
+        const extWindow = window as ExtendedWindow;
+        const ethereum = extWindow.ethereum;
+        if (ethereum?.providers) {
+          console.log('window.ethereum.providers:', ethereum.providers);
         }
       }
     }
   }, [isOpen, connectors]);
 
-  // We're using the imported helper functions from ethereum-helpers.ts
-
   // This function handles special preparation before connecting to specific wallets
   const prepareWalletConnection = async (walletId: string): Promise<boolean> => {
-    // Special case for MetaMask when multiple wallets are installed
-    if (walletId === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
-      const ethereum = window.ethereum as unknown as EthereumProvider;
+    try {
+      console.log(`Preparing connection for ${walletId}`);
       
-      // Check if we have multiple providers
-      if (ethereum.providers?.length) {
-        // Find MetaMask provider
-        const metaMaskProvider = ethereum.providers.find(p => p.isMetaMask);
+      // For any injected wallet, try to isolate the correct provider
+      if ((walletId === 'metamask' || walletId === 'trust' || walletId === 'phantom') && 
+          typeof window !== 'undefined' && window.ethereum) {
         
-        if (metaMaskProvider) {
-          try {
-            console.log('Attempting direct interaction with MetaMask provider before connection');
+        // Store the original provider to restore it if needed
+        // Use the extended window interface
+        const extWindow = window as ExtendedWindow;
+        const ethereum = extWindow.ethereum as EthereumProvider;
+        const originalProvider = ethereum;
+        console.log(`Original provider:`, originalProvider);
+        
+        try {
+          // Use ExtendedWindow for type safety
+          const extWindow = window as ExtendedWindow;
+          const ethereum = extWindow.ethereum as EthereumProvider;
+          
+          // Find the specific provider based on wallet ID
+          if (walletId === 'metamask' && ethereum.providers?.length) {
+            const provider = ethereum.providers.find((p: EthereumProvider) => p.isMetaMask && !p.isBraveWallet);
+            if (provider) {
+              console.log('Found MetaMask provider, setting as primary');
+      
+              // Set ethereum provider
+              (window as ExtendedWindow).ethereum = provider;
+              
+              // Try to wake up the wallet
+              try {
+                // Don't await this as it might hang
+                provider.request?.({ method: 'eth_chainId' });
+              } catch (e) {
+                console.warn('Non-blocking chain request error:', e);
+              }
+              return true;
+            }
+          }
+          else if (walletId === 'trust' && ethereum.providers?.length) {
+            const provider = ethereum.providers.find((p: EthereumProvider) => p.isTrust || p.isTrustWallet);
+            if (provider) {
+              console.log('Found Trust Wallet provider, setting as primary');
             
-            // Force the browser to use the MetaMask provider
-            // This is a way to override Coinbase or other wallets taking precedence
-            // This is an intentional override
-            window.ethereum = metaMaskProvider;
+              (window as ExtendedWindow).ethereum = provider;
+              return true;
+            }
+          }
+          else if (walletId === 'phantom') {
+            // For Phantom, we need to check if Solana is available
+            const extWindow = window as ExtendedWindow;
+            const phantom = extWindow.phantom;
+            if (phantom?.solana) {
+              console.log('Found Phantom provider for Solana');
+              // No need to override ethereum for Solana wallets
+              return true;
+            }
             
-            // We'll no longer try to request accounts directly, just return true
-            // to let the connector handle it
-            return true;
-          } catch (err) {
-            console.error('Error preparing MetaMask connection:', err);
-            // Even if there's an error here, we'll continue with the connection
-            // as the error might be with the preparation, not the connection itself
+            // Some Phantom versions also inject into ethereum
+            if (ethereum.providers?.length) {
+              const provider = ethereum.providers.find((p: EthereumProvider) => p.isPhantom);
+              if (provider) {
+                console.log('Found Phantom provider for Ethereum, setting as primary');
+                (window as ExtendedWindow).ethereum = provider;
+                return true;
+              }
+            }
+          }
+          
+          // If we couldn't find a specific provider but the wallet ID matches a property
+          // on the main ethereum object, use that
+          if (walletId === 'metamask' && ethereum.isMetaMask) {
+            console.log('Using main provider which has isMetaMask=true');
             return true;
           }
+          else if (walletId === 'trust' && (ethereum.isTrust || ethereum.isTrustWallet)) {
+            console.log('Using main provider which has isTrust=true');
+            return true;
+          }
+          else if (walletId === 'phantom' && ethereum.isPhantom) {
+            console.log('Using main provider which has isPhantom=true');
+            return true;
+          }
+          
+          // If we get here, we couldn't identify the specific provider
+          console.warn(`Could not identify specific provider for ${walletId}`);
+          // Restore original provider if we couldn't find the right one
+          (window as ExtendedWindow).ethereum = originalProvider;
+          return false; // Return false to indicate we couldn't find the specific provider
+          
+        } catch (err) {
+          console.error(`Error preparing ${walletId} connection:`, err);
+          // Restore original provider
+          (window as ExtendedWindow).ethereum = originalProvider;
+          return false; // Return false to indicate failure
         }
       }
+      
+      return true; // Return true for non-injected wallets or if no ethereum is available
+    } catch (error) {
+      console.error("Error in prepareWalletConnection:", error);
+      return false; // Return false to indicate failure
     }
-    return true;
   };
 
   const handleConnect = async (wallet: WalletOption) => {
@@ -150,30 +228,60 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
       // Check wallet availability
       if (wallet.id === 'metamask' && !isMetaMaskAvailable()) {
         setConnectError('MetaMask is not installed');
+        setIsConnecting(null);
         return;
       }
       else if (wallet.id === 'trust' && !isTrustWalletAvailable()) {
         setConnectError('Trust Wallet is not installed');
+        setIsConnecting(null);
         return;
       }
       else if (wallet.id === 'phantom' && !isPhantomAvailable()) {
         setConnectError('Phantom is not installed');
+        setIsConnecting(null);
         return;
       }
       
-      // Prepare wallet connection (special case for MetaMask)
+      // Prepare wallet connection (special case handling)
       const prepared = await prepareWalletConnection(wallet.id);
       if (!prepared) {
         setConnectError(`Failed to prepare ${wallet.name} connection`);
+        setIsConnecting(null);
         return;
       }
       
-      // Connect with the connector
-      await connect({ connector });
-      
-      console.log(`Successfully connected with ${connector.id}`);
-      setDebugInfo(`Connected using ${connector.name}`);
-      onClose();
+      try {
+        // Connect with the connector
+        await connect({ connector });
+        
+        console.log(`Successfully connected with ${connector.id}`);
+        setDebugInfo(`Connected using ${connector.name}`);
+        onClose();
+      } catch (connectError) {
+        console.error('Connection error, trying alternative approach:', connectError);
+        
+        // If there was an error and this is an injected wallet, try a more direct approach
+        if (wallet.id === 'metamask' || wallet.id === 'trust' || wallet.id === 'phantom') {
+          try {
+            // Try to directly request accounts from the provider
+            if (typeof window !== 'undefined' && window.ethereum) {
+              console.log('Trying direct eth_requestAccounts request');
+              const extWindow = window as ExtendedWindow;
+              const ethereum = extWindow.ethereum;
+              await ethereum?.request?.({ method: 'eth_requestAccounts' });
+              console.log('Direct request successful');
+              setDebugInfo(`Connected to ${wallet.name} using direct request`);
+              onClose();
+              return;
+            }
+          } catch (directError) {
+            console.error('Direct connection also failed:', directError);
+            throw connectError; // Throw the original error
+          }
+        }
+        
+        throw connectError;
+      }
     } catch (error) {
       console.error('Connection error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -182,7 +290,7 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
     } finally {
       setIsConnecting(null);
     }
-  }
+  };
 
   // Map of wallet connectors with availability checks
   const wallets: WalletOption[] = [
@@ -266,7 +374,8 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
         </div>
       ),
       id: 'coinbaseWallet',
-      connectorId: 'coinbaseWallet'
+      connectorId: 'coinbaseWallet',
+      checkAvailability: isCoinbaseWalletAvailable
     }
   ]
 
@@ -329,7 +438,7 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
         
         {error && !connectError && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error.message}
+            {error?.message}
           </div>
         )}
         
@@ -337,21 +446,26 @@ export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
           {debugInfo || "No debug information available"}
           {connectors.length === 0 && <p className="text-orange-500">No connectors available</p>}
           <div className="mt-2">
-            <div className="font-semibold">Available Connectors:</div>
-            <ul className="list-disc pl-4">
-              {connectors.map((c, i) => (
-                <li key={i}>{c.name} (ID: {c.id}) - {c.ready ? "Ready" : "Not Ready"}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="mt-2">
             <div className="font-semibold">Wallet Detection:</div>
             <ul className="list-disc pl-4">
               <li>MetaMask: {isMetaMaskAvailable() ? "Available" : "Not Available"}</li>
               <li>Trust Wallet: {isTrustWalletAvailable() ? "Available" : "Not Available"}</li>
               <li>Phantom: {isPhantomAvailable() ? "Available" : "Not Available"}</li>
+              <li>Coinbase Wallet: {isCoinbaseWalletAvailable() ? "Available" : "Not Available"}</li>
               <li>window.ethereum: {typeof window !== 'undefined' && window.ethereum ? "Present" : "Not Present"}</li>
             </ul>
+          </div>
+
+          <div className="mt-2">
+            <div className="font-semibold">Extension Conflicts:</div>
+            <div className="text-xs text-gray-600 mt-1">
+              Multiple wallet extensions can conflict with each other. Try:
+              <ol className="list-decimal pl-5 mt-1">
+                <li>Disabling all wallet extensions except the one you want to use</li>
+                <li>Using an incognito/private window with only one extension enabled</li>
+                <li>Using a different browser for different wallets</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>

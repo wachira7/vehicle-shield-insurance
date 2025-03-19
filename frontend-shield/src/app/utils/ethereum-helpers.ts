@@ -1,3 +1,4 @@
+//src/app/utils/ethereum-helpers.ts
 'use client'
 
 /**
@@ -24,6 +25,17 @@ declare global {
   }
 }
 
+// Safely access properties with error handling
+const safelyAccessProperty = <T, K extends keyof T>(obj: T | null | undefined, property: K): T[K] | undefined => {
+  try {
+    if (obj == null) return undefined;
+    return obj[property];
+  } catch (error) {
+    console.warn(`Error accessing property ${String(property)}:`, error);
+    return undefined;
+  }
+};
+
 // Helper function to access the ethereum provider while handling type issues
 const getEthereumProvider = (): EthereumProvider | null => {
   if (typeof window === 'undefined' || !window.ethereum) return null;
@@ -34,60 +46,97 @@ const getEthereumProvider = (): EthereumProvider | null => {
  * Detect if MetaMask is available
  */
 export const isMetaMaskAvailable = (): boolean => {
-  const ethereum = getEthereumProvider();
-  if (!ethereum) return false;
-  
-  // If providers array exists, check if any provider is MetaMask
-  if (ethereum.providers?.length) {
-    return ethereum.providers.some(p => p.isMetaMask === true);
+  try {
+    const ethereum = getEthereumProvider();
+    if (!ethereum) return false;
+    
+    // If providers array exists, check if any provider is MetaMask
+    if (safelyAccessProperty(ethereum, 'providers')?.length) {
+      try {
+        return !!ethereum.providers?.some(p => safelyAccessProperty(p, 'isMetaMask') === true);
+      } catch (error) {
+        console.warn("Error checking providers for MetaMask:", error);
+      }
+    }
+    
+    // Otherwise check the main provider
+    return !!safelyAccessProperty(ethereum, 'isMetaMask');
+  } catch (error) {
+    console.warn("Error in isMetaMaskAvailable:", error);
+    return false;
   }
-  
-  // Otherwise check the main provider
-  return !!ethereum.isMetaMask;
 };
 
 /**
  * Detect if Trust Wallet is available
  */
 export const isTrustWalletAvailable = (): boolean => {
-  const ethereum = getEthereumProvider();
-  if (!ethereum) return false;
-  
-  // If providers array exists, check if any provider is Trust Wallet
-  if (ethereum.providers?.length) {
-    return ethereum.providers.some(p => p.isTrust === true || p.isTrustWallet === true);
+  try {
+    const ethereum = getEthereumProvider();
+    if (!ethereum) return false;
+    
+    // If providers array exists, check if any provider is Trust Wallet
+    if (safelyAccessProperty(ethereum, 'providers')?.length) {
+      try {
+        const result = ethereum.providers?.some(p => 
+          safelyAccessProperty(p, 'isTrust') === true || 
+          safelyAccessProperty(p, 'isTrustWallet') === true
+        );
+        return result === true; // Ensure boolean return
+      } catch (error) {
+        console.warn("Error checking providers for Trust Wallet:", error);
+        return false;
+      }
+    }
+    
+    // First try the newer property
+    if (safelyAccessProperty(ethereum, 'isTrustWallet') === true) return true;
+    
+    // Then try the older one
+    if (safelyAccessProperty(ethereum, 'isTrust') === true) return true;
+    
+    return false;
+  } catch (error) {
+    console.warn("Error in isTrustWalletAvailable:", error);
+    return false;
   }
-  
-  // Otherwise check the main provider
-  return !!(ethereum.isTrust || ethereum.isTrustWallet);
 };
 
 /**
  * Detect if Phantom is available
  */
 export const isPhantomAvailable = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  
-  // Check if Phantom is available in window object
-  if (window.phantom) return true;
-  
-  // Sometimes Phantom can also inject itself into window.ethereum
-  const ethereum = getEthereumProvider();
-  if (!ethereum) return false;
-  
-  // Look for "phantom" or "Phantom" in the provider name or id
-  // This is a fallback detection mechanism
-  if (ethereum.isPhantom) return true;
-  
-  if (ethereum.providers?.length) {
-    return ethereum.providers.some(p => 
-      p.isPhantom || 
-      (p as EthereumProvider)?.isSolana || 
-      (p as EthereumProvider)?.isPhantom
-    );
+  try {
+    if (typeof window === 'undefined') return false;
+    
+    // Check if Phantom is available in window object
+    if (safelyAccessProperty(window, 'phantom')) return true;
+    
+    // Sometimes Phantom can also inject itself into window.ethereum
+    const ethereum = getEthereumProvider();
+    if (!ethereum) return false;
+    
+    // Look for "phantom" or "Phantom" in the provider name or id
+    if (safelyAccessProperty(ethereum, 'isPhantom') === true) return true;
+    
+    if (safelyAccessProperty(ethereum, 'providers')?.length) {
+      try {
+        const result = ethereum.providers?.some(p => 
+          safelyAccessProperty(p, 'isPhantom') === true || 
+          safelyAccessProperty(p, 'isSolana') === true
+        );
+        return result === true; // Ensure boolean return
+      } catch (error) {
+        console.warn("Error checking providers for Phantom:", error);
+        return false;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.warn("Error in isPhantomAvailable:", error);
+    return false;
   }
-  
-  return false;
 };
 
 /**
@@ -124,6 +173,41 @@ export const getTrustWalletProvider = (): EthereumProvider | null => {
   return (ethereum.isTrust || ethereum.isTrustWallet) ? ethereum : null;
 };
 
+/**
+ * Detect if Coinbase Wallet is available
+ */
+export const isCoinbaseWalletAvailable = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  
+  // Check for Coinbase Wallet browser extension
+  if (window.coinbaseWalletExtension) return true;
+  
+  // Check in ethereum provider
+  const ethereum = getEthereumProvider();
+  if (!ethereum) return false;
+  
+  // Check main provider
+  if (ethereum.isCoinbaseWallet) return true;
+  
+  // Check in providers array
+  if (ethereum.providers?.length) {
+    return ethereum.providers.some(p => 
+      p.isCoinbaseWallet || 
+      'isWalletLink' in p || 
+      'isCoinbase' in p
+    );
+  }
+  
+  // Additional fallback checks
+  // Check for CoinbaseWalletSDK in window
+  if ('CoinbaseWalletSDK' in window) return true;
+  
+  // Check for coinbaseWalletSDK connector in the connectors list
+  const hasConnector = document.querySelector('[data-testid="coinbase-wallet-connector"]') !== null;
+  if (hasConnector) return true;
+  
+  return false;
+};
 /**
  * Makes MetaMask the preferred provider by setting it as window.ethereum
  * This is helpful before connecting to ensure MetaMask is selected
