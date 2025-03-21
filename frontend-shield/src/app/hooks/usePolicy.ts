@@ -127,35 +127,34 @@ export const usePolicy = () => {
 
     const getUserPolicies = useCallback(async (address: string): Promise<number[]> => {
         try {
-            // Try to get policies from direct contract call first
-            const { data, error } = await readFromContract<number[]>('PolicyNFT', 'getPolicyByOwner', [address]);
-            if (!error && data && data.length > 0) {
-                return data;
-            }
-            
-            // Fall back to using events if direct call fails or returns empty
-            const eventLogs = await getContractEvents(
-                'InsuranceCore',
-                'PolicyCreated',
-                { owner: address }
-            );
-            
-            const parsedLogs = parseEventLogs(eventLogs, 'InsuranceCore', 'PolicyCreated');
-            
-            // Extract policy IDs from event logs
-            return parsedLogs.map(log => {
-                const policyId = log.args.policyId;
-                return typeof policyId === 'number' ? policyId : 
-                       typeof policyId === 'bigint' ? Number(policyId) :
-                       typeof policyId === 'string' ? parseInt(policyId, 10) : 0;
-            }).filter(id => id > 0);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to fetch user policies';
-            console.error('Error fetching user policies:', error);
-            toast.error(message);
+          // Only use the event-based approach since getPolicyByOwner doesn't exist
+          const eventLogs = await getContractEvents(
+            'InsuranceCore',
+            'PolicyCreated',
+            { owner: address }
+          );
+          
+          if (!eventLogs || eventLogs.length === 0) {
             return [];
+          }
+          
+          const parsedLogs = parseEventLogs(eventLogs, 'InsuranceCore', 'PolicyCreated');
+          
+          // Extract policy IDs from event logs
+          return parsedLogs.map(log => {
+            const policyId = log.args.policyId;
+            return typeof policyId === 'number' ? policyId : 
+                   typeof policyId === 'bigint' ? Number(policyId) :
+                   typeof policyId === 'string' ? parseInt(policyId, 10) : 0;
+          }).filter(id => id > 0);
+          
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to fetch user policies';
+          console.error('Error fetching user policies:', error);
+          toast.error(message);
+          return [];
         }
-    }, [readFromContract, getContractEvents, parseEventLogs]);
+      }, [getContractEvents, parseEventLogs]);
     
     const calculatePremium = useCallback(async (regPlate: string, tier: number): Promise<string> => {
         try {

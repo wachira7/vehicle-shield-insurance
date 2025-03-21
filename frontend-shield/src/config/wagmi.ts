@@ -1,5 +1,5 @@
 "use client"
-import { createConfig, http, createStorage } from 'wagmi'
+import { createConfig, http, createStorage, fallback } from 'wagmi'
 import { sepolia } from 'viem/chains'
 import { walletConnect, injected, coinbaseWallet } from 'wagmi/connectors'
 
@@ -34,13 +34,31 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Create transport with fallback functionality
+const sepoliaTransport = fallback([
+  http(`https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`, {
+    retryCount: 2,
+    retryDelay: 1000,
+  }),
+  http('https://rpc.sepolia.org', {
+    retryCount: 2,
+    retryDelay: 1000,
+  }),
+  http('https://ethereum-sepolia.publicnode.com', {
+    retryCount: 2,
+    retryDelay: 1000,
+  }),
+  http('https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161', {
+    retryCount: 2,
+    retryDelay: 1000,
+  }),
+])
+
 // Set up available connectors
 export const config = createConfig({
   chains: [sepolia],
   transports: {
-    [sepolia.id]: http(
-      `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`
-    )
+    [sepolia.id]: sepoliaTransport
   },
   connectors: [
     // Injected connector for browser wallets (MetaMask, Trust Wallet, etc.)
