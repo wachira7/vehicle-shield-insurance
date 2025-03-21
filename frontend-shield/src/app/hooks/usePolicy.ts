@@ -156,18 +156,35 @@ export const usePolicy = () => {
         }
       }, [getContractEvents, parseEventLogs]);
     
-    const calculatePremium = useCallback(async (regPlate: string, tier: number): Promise<string> => {
+      const calculatePremium = useCallback(async (regPlate: string, tier: number): Promise<string> => {
         try {
-            const { data, error } = await readFromContract<bigint>('RiskAssessment', 'calculatePremium', [regPlate, tier]);
-            if (error) throw error;
-            return formatEther(data || BigInt(0));
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to calculate premium';
-            console.error('Error calculating premium:', error);
-            toast.error(message);
+          // Add validation for regPlate
+          if (!regPlate || regPlate.trim() === '') {
             return '0';
+          }
+      
+          const { data, error } = await readFromContract<bigint>('RiskAssessment', 'calculatePremium', [regPlate, tier]);
+          if (error) throw error;
+          return formatEther(data || BigInt(0));
+        } catch (error) {
+          // Check if the error message indicates the vehicle doesn't exist
+          const errorMessage = error instanceof Error ? error.message : 'Failed to calculate premium';
+          
+          // Log the full error for debugging
+          //console.error('Error calculating premium:', error);
+          
+          // Customize message based on error type
+          if (errorMessage.includes('revert') || 
+              errorMessage.includes('returned no data') || 
+              errorMessage.includes('invalid parameters')) {
+            toast.error('Cannot calculate premium. The vehicle must be registered first.');
+          } else {
+            toast.error('Failed to calculate premium. Please try again later.');
+          }
+          
+          return '0';
         }
-    }, [readFromContract]);
+      }, [readFromContract]);
 
     const getPolicyStatus = useCallback(async (policyId: number): Promise<'active' | 'expired' | 'pending' | 'unknown'> => {
         try {
