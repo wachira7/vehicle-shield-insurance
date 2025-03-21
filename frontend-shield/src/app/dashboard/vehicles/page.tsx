@@ -36,60 +36,48 @@ export default function VehiclesPage() {
   const [userVehicles, setUserVehicles] = useState<Vehicle[]>([]);
   const [fetchingVehicles, setFetchingVehicles] = useState(false);
   
-  // Get the methods from your hook
-  const { uploadPhotos,  isLoading } = useVehicle();
-
-  // This would need to be implemented to fetch user's vehicles from your API/blockchain
-  const fetchUserVehicles = async () => {
-    setFetchingVehicles(true);
-    try {
-      // In a real implementation, you would call your smart contract to get vehicles
-      // For testing purposes, we'll use mock data
-      
-      // First approach: If your smart contract has a function to get all user vehicles
-      // const { data, error } = await readFromContract('InsuranceCore', 'getUserVehicles', [address]);
-      
-      // For demo purposes, using mock data
-      const mockVehicles: Vehicle[] = [
-        {
-          regPlate: 'ABC123',
-          make: 'Toyota',
-          model: 'Camry',
-          year: 2021,
-          baseValue: BigInt(20000),
-          mileage: 15000,
-          condition: 9,
-          hasAccidentHistory: false,
-          isRegistered: true
-        },
-        {
-          regPlate: 'XYZ789',
-          make: 'Honda',
-          model: 'Civic',
-          year: 2020,
-          baseValue: BigInt(18000),
-          mileage: 22000,
-          condition: 8,
-          hasAccidentHistory: false,
-          isRegistered: true
-        }
-      ];
-      
-      setUserVehicles(mockVehicles);
-    } catch (error) {
-      console.error('Error fetching vehicles:', error);
-      toast.error('Failed to load your vehicles');
-    } finally {
-      setFetchingVehicles(false);
-    }
-  };
+  
+  const { getUserVehicles, uploadPhotos, isLoading } = useVehicle();
 
   // Fetch vehicles when component mounts or address changes
   useEffect(() => {
-    if (address) {
-      fetchUserVehicles();
-    }
-  }, [address]);
+    const fetchVehicles = async () => {
+      if (!address) return;
+      
+      setFetchingVehicles(true);
+      try {
+        const vehicles = await getUserVehicles(address);
+        setUserVehicles(vehicles);
+      } catch (error) {
+        console.error('Error fetching vehicles:', error);
+        toast.error('Failed to load your vehicles');
+      } finally {
+        setFetchingVehicles(false);
+      }
+    };
+
+    fetchVehicles();
+  }, [address, getUserVehicles]);
+
+  // Handle vehicle registration success 
+  const handleRegistrationSuccess = (regPlate: string) => {
+    setSelectedVehicle(regPlate);
+    setActiveTab('photos');
+    
+    // Refresh the list of vehicles 
+    const fetchVehicles = async () => {
+      if (address) {
+        try {
+          const vehicles = await getUserVehicles(address);
+          setUserVehicles(vehicles);
+        } catch (error) {
+          console.error('Error refreshing vehicles:', error);
+        }
+      }
+    };
+    
+    fetchVehicles();
+  };
 
   // Handle photo upload
   const handlePhotoUpload = async (photos: Record<string, File>) => {
@@ -112,13 +100,7 @@ export default function VehiclesPage() {
     }
   };
 
-  // Handle vehicle registration success
-  const handleRegistrationSuccess = (regPlate: string) => {
-    setSelectedVehicle(regPlate);
-    setActiveTab('photos');
-    // Refresh the list of vehicles
-    fetchUserVehicles();
-  };
+  
   
   return (
     <div className="space-y-6">

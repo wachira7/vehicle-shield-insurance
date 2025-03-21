@@ -1,4 +1,4 @@
-//General dashboard overview
+//src/app/components/dashboard/Overview.tsx -General dashboard overview
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { ScrollArea } from '@/app/components/ui/scroll-area';

@@ -1,3 +1,4 @@
+//src/app/components/dashboard/ClaimsList.tsx
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';

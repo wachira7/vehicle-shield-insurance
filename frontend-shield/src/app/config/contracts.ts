@@ -1,4 +1,4 @@
-//contracts.ts
+//src/app/config/contracts.ts
 import InsuranceCoreABI from './abis/InsuranceCore.json';
 import PolicyNFTABI from './abis/PolicyNFT.json';
 import RiskAssessmentABI from './abis/RiskAssessment.json';

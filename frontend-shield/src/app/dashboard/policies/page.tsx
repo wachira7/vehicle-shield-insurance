@@ -52,6 +52,7 @@ export default function PoliciesPage() {
   const vehicleParam = searchParams.get('vehicle');
   
   // Fetch user's policies with vehicle details
+  //  useEffect to use the caching benefits of the hooks
   useEffect(() => {
     const fetchPoliciesWithVehicleDetails = async () => {
       if (!address) return;
@@ -61,7 +62,7 @@ export default function PoliciesPage() {
         // Get all policy IDs for the user
         const ids = await getUserPolicies(address);
         
-        // Fetch details for each policy
+        // Fetch details for each policy (this will use our cache)
         const policyDetails = await Promise.all(
           ids.map(id => getPolicyDetails(id))
         );
@@ -69,14 +70,14 @@ export default function PoliciesPage() {
         // Filter out null values
         const validPolicies = policyDetails.filter(policy => policy !== null) as FormattedPolicyData[];
         
-        // Fetch vehicle details for each policy
+        // Fetch vehicle details for each policy (this will use our cache)
         const policiesWithVehicles = await Promise.all(
           validPolicies.map(async (policy) => {
             try {
               const vehicleDetails = await getVehicleDetails(policy.regPlate);
               return {
                 ...policy,
-                vehicleDetails: vehicleDetails ??  undefined,
+                vehicleDetails: vehicleDetails ?? undefined,
               };
             } catch (error) {
               console.error(`Error fetching vehicle details for ${policy.regPlate}:`, error);

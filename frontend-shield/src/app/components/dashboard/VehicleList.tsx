@@ -1,4 +1,4 @@
-// User's vehicles summary
+//src/app/components/dashboard/VehicleList.tsx- User's vehicles summary/VehicleList
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';

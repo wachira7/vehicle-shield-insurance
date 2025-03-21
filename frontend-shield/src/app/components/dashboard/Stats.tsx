@@ -1,4 +1,4 @@
-//Statistics display
+//src/app/components/dashboard/Stats-Statistics display
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Shield, Car, FileText, TrendingUp } from 'lucide-react';

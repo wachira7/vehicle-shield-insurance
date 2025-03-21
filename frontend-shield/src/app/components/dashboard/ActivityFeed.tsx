@@ -1,4 +1,4 @@
-// Recent activities/transactions
+//src/app/components/dashboard/ActivityFeed.tsx
 import React from 'react';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Shield, FileText, Car, Clock } from 'lucide-react';

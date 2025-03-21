@@ -1,9 +1,10 @@
 "use client";
-import { readContract, writeContract, type BaseError } from '@wagmi/core';
+import { readContract, writeContract, getPublicClient, type BaseError } from '@wagmi/core';
 import { CONTRACT_ADDRESSES } from '../config/constants';
 import { InsuranceCoreABI, PolicyNFTABI, RiskAssessmentABI } from '../config/contracts';
 import { useCallback } from 'react';
 import { config } from '../../config/wagmi';
+import { type AbiEvent } from 'viem';
 
 type ContractName = keyof typeof CONTRACT_ADDRESSES;
 
@@ -14,6 +15,24 @@ type ContractReturnType = string | number | boolean | bigint | object | null;
 type WriteOptions = {
   value?: bigint;
 };
+
+// Define event log type
+interface EventLog {
+  blockNumber: bigint;
+  transactionHash: `0x${string}`;
+  logIndex: number;
+  args: Record<string, unknown>; // Using Record with unknown instead of any
+  timestamp?: bigint;
+}
+
+// Define ParsedEventLog type
+interface ParsedEventLog {
+  blockNumber: bigint;
+  transactionHash: `0x${string}`;
+  logIndex: number;
+  args: Record<string, unknown>; // Using Record with unknown instead of any
+  timestamp?: bigint;
+}
 
 const getContractABI = (contractName: ContractName) => {
   switch (contractName) {
@@ -70,8 +89,123 @@ export const useContract = () => {
     }
   }, []);
 
+  const getContractEvents = useCallback(async (
+    contractName: ContractName,
+    eventName: string,
+    filter: Record<string, unknown> = {}
+  ): Promise<EventLog[]> => {
+    try {
+      const publicClient = getPublicClient(config);
+      const abi = getContractABI(contractName);
+      const contractAddress = CONTRACT_ADDRESSES[contractName];
+      
+      // Find the event in the ABI
+      const eventAbi = abi.find(item => 
+        typeof item === 'object' && 
+        item !== null && 
+        'type' in item && 
+        item.type === 'event' && 
+        'name' in item && 
+        item.name === eventName
+      ) as AbiEvent | undefined;
+      
+      if (!eventAbi) {
+        throw new Error(`Event ${eventName} not found in contract ${contractName}`);
+      }
+      
+      // Create filter arguments based on the filter object
+      const filterValues: Record<number, unknown> = {};
+      
+      if (eventAbi.inputs) {
+        Object.entries(filter).forEach(([key, value]) => {
+          // Find the index of the parameter in the event
+          const paramIndex = eventAbi.inputs.findIndex(input => 
+            typeof input === 'object' && 
+            input !== null && 
+            'name' in input && 
+            input.name === key
+          );
+          
+          if (paramIndex !== -1) {
+            filterValues[paramIndex] = value;
+          }
+        });
+      }
+      
+      // Get logs
+      const logs = await publicClient.getLogs({
+        address: contractAddress,
+        event: eventAbi,
+        args: Object.keys(filterValues).length > 0 ? filterValues : undefined,
+        fromBlock: BigInt(0),
+        toBlock: 'latest'
+      });
+      
+      return logs as unknown as EventLog[];
+    } catch (error) {
+      console.error(`Error getting events for ${contractName}.${eventName}:`, error);
+      return [];
+    }
+  }, []);
+
+  // Add this function to help parse event logs (useful for the frontend)
+  const parseEventLogs = useCallback((
+    logs: EventLog[],
+    contractName: ContractName,
+    eventName: string
+  ): ParsedEventLog[] => {
+    try {
+      const abi = getContractABI(contractName);
+      
+      // Find the event in the ABI
+      const eventAbi = abi.find(item => 
+        typeof item === 'object' &&
+        item !== null &&
+        'type' in item &&
+        item.type === 'event' &&
+        'name' in item &&
+        item.name === eventName
+      ) as AbiEvent | undefined;
+      
+      if (!eventAbi) {
+        throw new Error(`Event ${eventName} not found in contract ${contractName}`);
+      }
+      
+      // Parse logs to extract values in a user-friendly format
+      return logs.map(log => {
+        const args: Record<string, unknown> = {};
+        
+        if (eventAbi.inputs && log.args) {
+          // Extract named parameters from the log
+          eventAbi.inputs.forEach((input, index) => {
+            if (typeof input === 'object' && 
+                input !== null && 
+                'name' in input && 
+                input.name && 
+                log.args[index] !== undefined) {
+              args[input.name] = log.args[index];
+            }
+          });
+        }
+        
+        return {
+          blockNumber: log.blockNumber,
+          transactionHash: log.transactionHash,
+          logIndex: log.logIndex,
+          args,
+          timestamp: log.timestamp // Note: this might be undefined depending on your viem version
+        };
+      });
+    } catch (error) {
+      console.error(`Error parsing event logs for ${contractName}.${eventName}:`, error);
+      return [];
+    }
+  }, []);
+
   return {
     readFromContract,
     writeToContract,
+    getContractEvents,
+    parseEventLogs
   };
 };

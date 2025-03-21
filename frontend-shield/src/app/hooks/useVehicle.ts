@@ -1,6 +1,6 @@
-//useVehicle.ts
+//src/app/hooks/useVehicle.ts
 "use client"
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useContract } from './useContract';
 import { INSURANCE_CONSTANTS, PHOTO_REQUIREMENTS } from '../config/constants';
 import { toast } from 'react-hot-toast';
@@ -10,8 +10,30 @@ type PhotoType = 'image/jpeg' | 'image/png';
 type PhotoView = typeof PHOTO_REQUIREMENTS.requiredViews[number];
 
 // Explicit interfaces for better documentation and type safety
-
 interface VehicleData {
+    regPlate: string;
+    make: string;
+    model: string;
+    year: number;
+    owner: string;
+    status: number; // Corresponds to VerificationStatus enum
+    tier: number; // Corresponds to VerificationTier enum
+    lastVerificationDate: bigint;
+    isRegistered: boolean;
+}
+
+interface RiskData {
+    baseValue: bigint;
+    age: number;
+    mileage: number;
+    condition: number;
+    riskScore: number;
+    hasAccidentHistory: boolean;
+    lastAssessment: bigint;
+}
+
+export interface Vehicle {
+    regPlate: string;
     make: string;
     model: string;
     year: number;
@@ -20,8 +42,12 @@ interface VehicleData {
     condition: number;
     hasAccidentHistory: boolean;
     isRegistered: boolean;
-    // Add other fields from your smart contract
+    status?: number;
+    tier?: number;
+    lastVerificationDate?: bigint;
+    riskScore?: number;
 }
+
 interface PhotoValidation {
     regPlate: string;
     photos: Record<PhotoView, File>;
@@ -42,8 +68,11 @@ interface VehicleRegistration {
 }
 
 export const useVehicle = () => {
-    const { readFromContract, writeToContract } = useContract();
+    const { readFromContract, writeToContract, getContractEvents, parseEventLogs } = useContract();
     const [isLoading, setIsLoading] = useState(false);
+    
+    // Add caching for vehicles
+    const vehicleCache = useRef(new Map<string, Vehicle>());
 
     const validatePhotos = ({ photos, maxSize, acceptedTypes, requiredViews }: Omit<PhotoValidation, 'regPlate'>) => {
         requiredViews.forEach(view => {
@@ -92,7 +121,11 @@ export const useVehicle = () => {
             ]);
 
             if (error) throw error;
-            if (hash) toast.success('Vehicle registered successfully');
+            if (hash) {
+                toast.success('Vehicle registered successfully');
+                // Clear cache on successful registration
+                vehicleCache.current.delete(regPlate);
+            }
             
             return { hash, error: null };
 
@@ -118,6 +151,8 @@ export const useVehicle = () => {
                 requiredViews: PHOTO_REQUIREMENTS.requiredViews
             });
 
+            // In a real implementation, you would upload photos to IPFS and get hashes
+            // For this example, we're using placeholder hashes
             const photoHashes = {
                 front: 'hash1',
                 back: 'hash2',
@@ -152,23 +187,130 @@ export const useVehicle = () => {
         }
     };
 
-    const getVehicleDetails = async (regPlate: string) => {
+    const getVehicleDetails = useCallback(async (regPlate: string): Promise<Vehicle | null> => {
         try {
-            const { data, error } = await readFromContract<VehicleData>('InsuranceCore', 'vehicles', [regPlate]);
-            if (error) throw error;
-            return data;
+            // Check cache first
+            if (vehicleCache.current.has(regPlate)) {
+                return vehicleCache.current.get(regPlate) || null;
+            }
+            
+            // Get basic vehicle data from InsuranceCore contract
+            const { data: vehicleData, error: vehicleError } = await readFromContract<VehicleData>(
+                'InsuranceCore', 
+                'vehicles', 
+                [regPlate]
+            );
+            
+            if (vehicleError || !vehicleData) {
+                throw vehicleError || new Error('Vehicle not found');
+            }
+            
+            // Get risk data from RiskAssessment contract
+            const { data: riskData} = await readFromContract<RiskData>(
+                'RiskAssessment', 
+                'getVehicleRisk', 
+                [regPlate]
+            );
+            
+            // Combine data from both contracts
+            const vehicle: Vehicle = {
+                regPlate: vehicleData.regPlate,
+                make: vehicleData.make,
+                model: vehicleData.model,
+                year: Number(vehicleData.year),
+                baseValue: riskData ? riskData.baseValue : BigInt(0),
+                mileage: riskData ? riskData.mileage : 0,
+                condition: riskData ? riskData.condition : 0,
+                hasAccidentHistory: riskData ? riskData.hasAccidentHistory : false,
+                isRegistered: vehicleData.isRegistered,
+                status: vehicleData.status,
+                tier: vehicleData.tier,
+                lastVerificationDate: vehicleData.lastVerificationDate,
+                riskScore: riskData ? riskData.riskScore : 0
+            };
+            
+            // Cache the result
+            vehicleCache.current.set(regPlate, vehicle);
+            return vehicle;
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to fetch vehicle details';
             console.error('Error fetching vehicle details:', error);
             toast.error(message);
             return null;
         }
-    };
+    }, [readFromContract]);
+
+    const getUserVehicles = useCallback(async (address: string): Promise<Vehicle[]> => {
+        try {
+            // Get vehicle registration events for this user
+            const eventLogs = await getContractEvents(
+                'InsuranceCore',
+                'VehicleRegistered',
+                { owner: address }
+            );
+            
+            const parsedLogs = parseEventLogs(eventLogs, 'InsuranceCore', 'VehicleRegistered');
+            
+            if (parsedLogs.length === 0) return [];
+            
+            // Extract registration plates from events
+            const regPlates = parsedLogs.map(log => {
+                const regPlate = log.args.regPlate;
+                return typeof regPlate === 'string' ? regPlate : '';
+            }).filter(Boolean);
+            
+            // Get details for each vehicle
+            const vehicles = await Promise.all(
+                regPlates.map(regPlate => getVehicleDetails(regPlate))
+            );
+            
+            return vehicles.filter((v): v is Vehicle => v !== null);
+        } catch (error) {
+            console.error('Error fetching user vehicles:', error);
+            return [];
+        }
+    }, [getContractEvents, parseEventLogs, getVehicleDetails]);
+
+    const getVehiclePhotos = useCallback(async (regPlate: string) => {
+        try {
+            const { data, error } = await readFromContract(
+                'InsuranceCore',
+                'vehiclePhotos',
+                [regPlate]
+            );
+            
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error fetching vehicle photos:', error);
+            return null;
+        }
+    }, [readFromContract]);
+
+    const getVehicleStatus = useCallback(async (regPlate: string): Promise<string> => {
+        try {
+            const vehicle = await getVehicleDetails(regPlate);
+            
+            if (!vehicle) return 'UNKNOWN';
+            
+            // Map status number to string
+            const statusMap = ['PENDING', 'VERIFIED', 'REJECTED'];
+            return vehicle.status !== undefined && vehicle.status < statusMap.length 
+                ? statusMap[vehicle.status] 
+                : 'UNKNOWN';
+        } catch (error) {
+            console.error('Error getting vehicle status:', error);
+            return 'UNKNOWN';
+        }
+    }, [getVehicleDetails]);
 
     return {
         registerVehicle,
         uploadPhotos,
         getVehicleDetails,
+        getUserVehicles,
+        getVehiclePhotos,
+        getVehicleStatus,
         isLoading,
     };
 };

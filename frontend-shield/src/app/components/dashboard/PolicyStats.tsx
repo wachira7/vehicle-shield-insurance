@@ -1,4 +1,4 @@
-//Active policies overview
+//src/app/components/dashboard/PolicyStats.tsx -Active policies overview
 import React from 'react';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';

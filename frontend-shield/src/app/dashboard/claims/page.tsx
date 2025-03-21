@@ -46,6 +46,7 @@ export default function ClaimsPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   // Fetch user's policies and claims
+  
   useEffect(() => {
     const fetchPoliciesAndClaims = async () => {
       if (!address) return;
