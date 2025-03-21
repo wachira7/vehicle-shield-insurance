@@ -38,18 +38,25 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
 
  
 // Handle network switching with a delay
+  // Handle connection status using the status variable
   useEffect(() => {
     if (!mounted) return;
     
-    // Add a small delay before attempting to switch networks
     const timer = setTimeout(() => {
-      if (isConnected && chainId !== sepolia.id && switchChain) {
-        switchChain({ chainId: sepolia.id });
+      if (status === 'connecting') {
+        setIsLoading(true);
+        setError(null);
+      } else if (status === 'disconnected') {
+        setIsLoading(false);
+        setError(null);
+      } else if (status === 'connected') {
+        setIsLoading(false);
+        setError(null);
       }
-    }, 500); // 500ms delay
+    }, 1000); // Short delay to avoid hydration issues
     
-    return () => clearTimeout(timer); // Clean up the timer on unmount
-  }, [mounted, chainId, isConnected, switchChain]);
+    return () => clearTimeout(timer);
+  }, [mounted, status]);
 
   // Similarly for auto-connect or redirects
   useEffect(() => {
@@ -59,7 +66,7 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
       if (isConnected && redirectTo) {
         router.push(redirectTo);
       }
-    }, 500);
+    }, 1000);
     
     return () => clearTimeout(timer);
   }, [mounted, isConnected, redirectTo, router]);
@@ -67,7 +74,7 @@ export const ConnectButton = ({ className, redirectTo }: ConnectButtonProps) => 
   // Error handling
   const handleError = (error: Error) => {
     setError(error.message)
-    setTimeout(() => setError(null), 5000)
+    setTimeout(() => setError(null), 7000)
   }
 
   // Handle disconnect
