@@ -4,6 +4,7 @@ import { Wallet } from "ethers";
 import { deployments } from "@vehicle-shield/protocol";
 import { createApp } from "../src/app";
 import { openDatabase } from "../src/db";
+import { memoryStore } from "../src/storage";
 import { staticVerifier } from "../src/verification";
 
 const { db, close } = await openDatabase("pglite:");
@@ -15,6 +16,8 @@ const app = createApp({
   db,
   sessionSecret: "smoke-test-secret-smoke-test-secret",
   siweDomain: "localhost:3000",
+  store: memoryStore(),
+  photoKey: Buffer.alloc(32, 1),
 });
 const response = await app.request("/health");
 if (response.status !== 200) throw new Error(`/health returned ${response.status}`);

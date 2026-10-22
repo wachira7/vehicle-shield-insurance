@@ -13,6 +13,8 @@ import {
 } from "@vehicle-shield/protocol";
 import { authRoutes } from "./auth";
 import type { Database } from "./db";
+import { evidenceRoutes, photoRoutes, vehicleRoutes } from "./photos";
+import type { BlobStore } from "./storage";
 import type { VehicleVerifier } from "./verification";
 
 export interface AppOptions {
@@ -23,6 +25,8 @@ export interface AppOptions {
   db: Database;
   sessionSecret: string;
   siweDomain: string;
+  store: BlobStore;
+  photoKey: Buffer;
   corsOrigins?: string[];
   now?: () => Date;
 }
@@ -74,6 +78,8 @@ export function createApp({
   db,
   sessionSecret,
   siweDomain,
+  store,
+  photoKey,
   corsOrigins = [],
   now = () => new Date(),
 }: AppOptions) {
@@ -101,6 +107,10 @@ export function createApp({
   );
 
   app.route("/v1/auth", authRoutes({ db, sessionSecret, siweDomain, chainId: deployment.chainId, now }));
+  const photoDeps = { db, store, photoKey, vehicleIdSalt, sessionSecret, now };
+  app.route("/v1/vehicles", vehicleRoutes(photoDeps));
+  app.route("/v1/claims/evidence", evidenceRoutes(photoDeps));
+  app.route("/v1/photos", photoRoutes(photoDeps));
 
   /// Instant price with no wallet: lets people compare cover before connecting.
   app.post("/v1/quotes/estimate", async (c) => {
@@ -123,17 +133,17 @@ export function createApp({
     if (!parsed.success) return c.json({ error: "invalid_request", issues: parsed.error.issues }, 400);
     const { vehicle, buyer, plate, ...request } = parsed.data;
 
+    const vehicleId = vehicleIdFor(plate, vehicleIdSalt);
+    const verification = await verifier.check(vehicleId, buyer);
+    if (!verification.approved) return c.json({ error: "vehicle_not_verified", vehicleId }, 403);
+
+    // A verified vehicle is priced from its assessor-confirmed details, not the request's.
     const price = priceQuote(
-      { ...vehicle, marketValue: vehicle.marketValueUsdc },
+      verification.profile ?? { ...vehicle, marketValue: vehicle.marketValueUsdc },
       { coverage: request.coverageUsdc, deductible: request.deductibleUsdc, durationDays: request.durationDays },
       now(),
     );
     if (!price.eligible) return c.json({ error: "not_eligible", reasons: price.reasons }, 422);
-
-    const vehicleId = vehicleIdFor(plate, vehicleIdSalt);
-    if (!(await verifier.isApproved(vehicleId, buyer))) {
-      return c.json({ error: "vehicle_not_verified", vehicleId }, 403);
-    }
 
     const { quote, signature } = await createSignedQuote(
       signer,
@@ -154,6 +164,7 @@ export function createApp({
       signature,
       expiresAt: new Date(Number(quote.deadline) * 1000).toISOString(),
       contract: { chainId: deployment.chainId, insuranceCore: deployment.contracts.InsuranceCore, usdc: deployment.contracts.USDC },
+      pricedFrom: verification.profile ? "verified_vehicle" : "request",
       ...describePrice(price),
     });
   });
