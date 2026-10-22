@@ -11,6 +11,7 @@ import {
 import { createApp } from "../src/app";
 import { loadConfig } from "../src/config";
 import { openDatabase, type Database } from "../src/db";
+import { memoryStore } from "../src/storage";
 import { staticVerifier } from "../src/verification";
 
 const signer = Wallet.createRandom();
@@ -34,6 +35,8 @@ function makeApp(allowVehicles = true) {
     db,
     sessionSecret: "test-session-secret-test-session-secret",
     siweDomain: "localhost:3000",
+    store: memoryStore(),
+    photoKey: Buffer.alloc(32, 1),
     corsOrigins: ["http://localhost:3000"],
     now: () => NOW,
   });
@@ -167,7 +170,7 @@ describe("POST /v1/quotes", () => {
 
 describe("loadConfig", () => {
   it("fails fast without the signer key and salt", () => {
-    expect(() => loadConfig({})).toThrow(/QUOTE_SIGNER_PRIVATE_KEY, VEHICLE_ID_SALT, SESSION_SECRET/);
+    expect(() => loadConfig({})).toThrow(/QUOTE_SIGNER_PRIVATE_KEY, VEHICLE_ID_SALT, SESSION_SECRET, PHOTO_ENCRYPTION_KEY/);
   });
 
   it("defaults to the committed Sepolia deployment and refuses unverified vehicles", () => {
@@ -175,16 +178,35 @@ describe("loadConfig", () => {
       QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey,
       VEHICLE_ID_SALT: "s",
       SESSION_SECRET: "x".repeat(32),
+      PHOTO_ENCRYPTION_KEY: "ab".repeat(32),
     });
     expect(config.deployment).toBe(deployments.sepolia);
     expect(config.allowUnverifiedVehicles).toBe(false);
     expect(config.signer.address).toBe(signer.address);
     expect(config.databaseUrl).toBe("pglite:./.data/pglite");
+    expect(config.storage).toEqual({ kind: "local", dir: "./.data/blobs" });
+  });
+
+  it("uses Filebase only when all of its settings are present", () => {
+    const base = {
+      QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey,
+      VEHICLE_ID_SALT: "s",
+      SESSION_SECRET: "x".repeat(32),
+      PHOTO_ENCRYPTION_KEY: "ab".repeat(32),
+    };
+    expect(() => loadConfig({ ...base, FILEBASE_ACCESS_KEY: "k" })).toThrow(/Set all of FILEBASE_ACCESS_KEY/);
+    const config = loadConfig({ ...base, FILEBASE_ACCESS_KEY: "k", FILEBASE_SECRET_KEY: "s", FILEBASE_BUCKET: "b" });
+    expect(config.storage).toEqual({ kind: "filebase", accessKeyId: "k", secretAccessKey: "s", bucket: "b" });
   });
 
   it("rejects a short session secret", () => {
     expect(() =>
-      loadConfig({ QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey, VEHICLE_ID_SALT: "s", SESSION_SECRET: "short" }),
+      loadConfig({
+        QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey,
+        VEHICLE_ID_SALT: "s",
+        SESSION_SECRET: "short",
+        PHOTO_ENCRYPTION_KEY: "ab".repeat(32),
+      }),
     ).toThrow(/at least 32 characters/);
   });
 });

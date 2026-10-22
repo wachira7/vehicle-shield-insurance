@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { deployments } from "@vehicle-shield/protocol";
 import { createApp } from "../src/app";
 import { openDatabase, type Database } from "../src/db";
+import { memoryStore } from "../src/storage";
 import { staticVerifier } from "../src/verification";
 
 const SECRET = "test-session-secret-test-session-secret";
@@ -30,6 +31,8 @@ const app = () =>
     db,
     sessionSecret: SECRET,
     siweDomain: DOMAIN,
+    store: memoryStore(),
+    photoKey: Buffer.alloc(32, 1),
     now: () => clock,
   });
 
