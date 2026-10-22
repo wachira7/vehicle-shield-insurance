@@ -11,6 +11,8 @@ import {
   type Deployment,
   type PricingResult,
 } from "@vehicle-shield/protocol";
+import { authRoutes } from "./auth";
+import type { Database } from "./db";
 import type { VehicleVerifier } from "./verification";
 
 export interface AppOptions {
@@ -18,6 +20,9 @@ export interface AppOptions {
   deployment: Deployment;
   vehicleIdSalt: string;
   verifier: VehicleVerifier;
+  db: Database;
+  sessionSecret: string;
+  siweDomain: string;
   corsOrigins?: string[];
   now?: () => Date;
 }
@@ -61,11 +66,24 @@ function describePrice(price: Extract<PricingResult, { eligible: true }>) {
   };
 }
 
-export function createApp({ signer, deployment, vehicleIdSalt, verifier, corsOrigins = [], now = () => new Date() }: AppOptions) {
+export function createApp({
+  signer,
+  deployment,
+  vehicleIdSalt,
+  verifier,
+  db,
+  sessionSecret,
+  siweDomain,
+  corsOrigins = [],
+  now = () => new Date(),
+}: AppOptions) {
   const app = new Hono();
   const domain = quoteDomain(deployment.chainId, deployment.contracts.InsuranceCore);
 
-  app.use("/v1/*", cors({ origin: corsOrigins, allowMethods: ["POST"] }));
+  app.use(
+    "/v1/*",
+    cors({ origin: corsOrigins, allowMethods: ["GET", "POST"], allowHeaders: ["Content-Type", "Authorization"] }),
+  );
 
   app.onError((error, c) => {
     console.error(error);
@@ -81,6 +99,8 @@ export function createApp({ signer, deployment, vehicleIdSalt, verifier, corsOri
       quoteSigner: signer.address,
     }),
   );
+
+  app.route("/v1/auth", authRoutes({ db, sessionSecret, siweDomain, chainId: deployment.chainId, now }));
 
   /// Instant price with no wallet: lets people compare cover before connecting.
   app.post("/v1/quotes/estimate", async (c) => {
