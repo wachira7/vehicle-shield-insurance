@@ -1,5 +1,5 @@
 import { Wallet, verifyTypedData } from "ethers";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   QUOTE_TYPES,
   deployments,
@@ -10,6 +10,7 @@ import {
 } from "@vehicle-shield/protocol";
 import { createApp } from "../src/app";
 import { loadConfig } from "../src/config";
+import { openDatabase, type Database } from "../src/db";
 import { staticVerifier } from "../src/verification";
 
 const signer = Wallet.createRandom();
@@ -17,12 +18,22 @@ const deployment = deployments.sepolia;
 const NOW = new Date("2026-06-01T00:00:00Z");
 const BUYER = "0x44b638e43c1ec2134e3103a2aa7ed74e473130ac";
 
+let db: Database;
+let closeDb: () => Promise<void>;
+beforeAll(async () => {
+  ({ db, close: closeDb } = await openDatabase("pglite:"));
+});
+afterAll(() => closeDb());
+
 function makeApp(allowVehicles = true) {
   return createApp({
     signer,
     deployment,
     vehicleIdSalt: "test-salt",
     verifier: staticVerifier(allowVehicles),
+    db,
+    sessionSecret: "test-session-secret-test-session-secret",
+    siweDomain: "localhost:3000",
     corsOrigins: ["http://localhost:3000"],
     now: () => NOW,
   });
@@ -156,13 +167,24 @@ describe("POST /v1/quotes", () => {
 
 describe("loadConfig", () => {
   it("fails fast without the signer key and salt", () => {
-    expect(() => loadConfig({})).toThrow(/QUOTE_SIGNER_PRIVATE_KEY, VEHICLE_ID_SALT/);
+    expect(() => loadConfig({})).toThrow(/QUOTE_SIGNER_PRIVATE_KEY, VEHICLE_ID_SALT, SESSION_SECRET/);
   });
 
   it("defaults to the committed Sepolia deployment and refuses unverified vehicles", () => {
-    const config = loadConfig({ QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey, VEHICLE_ID_SALT: "s" });
+    const config = loadConfig({
+      QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey,
+      VEHICLE_ID_SALT: "s",
+      SESSION_SECRET: "x".repeat(32),
+    });
     expect(config.deployment).toBe(deployments.sepolia);
     expect(config.allowUnverifiedVehicles).toBe(false);
     expect(config.signer.address).toBe(signer.address);
+    expect(config.databaseUrl).toBe("pglite:./.data/pglite");
+  });
+
+  it("rejects a short session secret", () => {
+    expect(() =>
+      loadConfig({ QUOTE_SIGNER_PRIVATE_KEY: signer.privateKey, VEHICLE_ID_SALT: "s", SESSION_SECRET: "short" }),
+    ).toThrow(/at least 32 characters/);
   });
 });

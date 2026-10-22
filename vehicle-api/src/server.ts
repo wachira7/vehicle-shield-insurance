@@ -2,6 +2,7 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { loadConfig } from "./config";
+import { openDatabase } from "./db";
 import { staticVerifier } from "./verification";
 
 const config = loadConfig();
@@ -9,11 +10,16 @@ if (config.allowUnverifiedVehicles) {
   console.warn("ALLOW_UNVERIFIED_VEHICLES is on: quotes are signed for unverified vehicles. Testnet only.");
 }
 
+const { db } = await openDatabase(config.databaseUrl);
+
 const app = createApp({
   signer: config.signer,
   deployment: config.deployment,
   vehicleIdSalt: config.vehicleIdSalt,
   verifier: staticVerifier(config.allowUnverifiedVehicles),
+  db,
+  sessionSecret: config.sessionSecret,
+  siweDomain: config.siweDomain,
   corsOrigins: config.corsOrigins,
 });
 
