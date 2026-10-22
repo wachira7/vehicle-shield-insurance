@@ -63,10 +63,10 @@ async function main() {
     usdcIsMock: !env.USDC_ADDRESS,
     roles,
   };
-  const outDir = path.join(__dirname, "../deployments");
+  const outDir = path.join(__dirname, "../../packages/protocol/deployments");
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, `${network.name}.json`), JSON.stringify(deployment, null, 2) + "\n");
-  console.log(`Wrote deployments/${network.name}.json`);
+  console.log(`Wrote packages/protocol/deployments/${network.name}.json`);
 
   if (network.name === "sepolia") {
     // Let the explorers index the bytecode before verifying.

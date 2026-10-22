@@ -1,0 +1,19 @@
+{
+  "name": "@vehicle-shield/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Quote format, pricing, ABIs and deployed addresses shared by the contracts, API and frontend",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ethers": "^6.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^3.2.4"
+  }
+}

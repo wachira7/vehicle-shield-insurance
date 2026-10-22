@@ -24,8 +24,9 @@ jobs:
         with:
           node-version: 22
           cache: yarn
-          cache-dependency-path: vehicle-backend/yarn.lock
+          cache-dependency-path: yarn.lock
       - run: yarn install --frozen-lockfile
+        working-directory: .
       - name: Tests must pass before deploying
         run: yarn test
       - name: Deploy
@@ -43,4 +44,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sepolia-deployment
-          path: vehicle-backend/deployments/sepolia.json
+          path: packages/protocol/deployments/sepolia.json
