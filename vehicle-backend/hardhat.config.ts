@@ -26,7 +26,12 @@ const config: HardhatUserConfig = {
       },
     }),
   },
+  // Sourcify needs no API key; Etherscan verification runs only when a key is set.
+  sourcify: {
+    enabled: true,
+  },
   etherscan: {
+    enabled: Boolean(ETHERSCAN_API_KEY),
     apiKey: ETHERSCAN_API_KEY || "",
   },
   gasReporter: {

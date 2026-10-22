@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { ethers, network } from "hardhat";
+import { ethers, network, run } from "hardhat";
 
 // Optional environment:
 //   USDC_ADDRESS        existing stablecoin; a MockUSDC is deployed when unset
@@ -67,10 +67,20 @@ async function main() {
   console.log(`Wrote deployments/${network.name}.json`);
 
   if (network.name === "sepolia") {
-    console.log("\nVerify with:");
-    if (!env.USDC_ADDRESS) console.log(`  yarn hardhat verify --network sepolia ${usdcAddress}`);
-    console.log(`  yarn hardhat verify --network sepolia ${policyNFTAddress} ${deployer.address}`);
-    console.log(`  yarn hardhat verify --network sepolia ${coreAddress} ${deployer.address} ${usdcAddress} ${policyNFTAddress}`);
+    // Let the explorers index the bytecode before verifying.
+    await core.deploymentTransaction()?.wait(5);
+    const toVerify: [string, unknown[]][] = [
+      [policyNFTAddress, [deployer.address]],
+      [coreAddress, [deployer.address, usdcAddress, policyNFTAddress]],
+    ];
+    if (!env.USDC_ADDRESS) toVerify.unshift([usdcAddress, []]);
+    for (const [address, constructorArguments] of toVerify) {
+      try {
+        await run("verify:verify", { address, constructorArguments });
+      } catch (error) {
+        console.warn(`Verification of ${address} failed; the deployment itself succeeded.`, error);
+      }
+    }
   }
 }
 
