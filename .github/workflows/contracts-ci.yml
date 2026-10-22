@@ -4,8 +4,9 @@ on:
   push:
     branches: [main]
     paths: ["vehicle-backend/**", "packages/**", "yarn.lock", ".github/workflows/contracts-*.yml"]
+  # Every PR runs this workflow: its checks are required, and a required check
+  # that never runs would block the merge.
   pull_request:
-    paths: ["vehicle-backend/**", "packages/**", "yarn.lock", ".github/workflows/contracts-*.yml"]
 
 concurrency:
   group: contracts-ci-${{ github.ref }}
