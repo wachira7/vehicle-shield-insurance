@@ -1,0 +1,70 @@
+name: Indexer CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["vehicle-indexer/**", "vehicle-backend/**", "packages/**", "yarn.lock", ".github/workflows/indexer-ci.yml"]
+  # Every PR runs this workflow so its checks can be required.
+  pull_request:
+
+concurrency:
+  group: indexer-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INDEXER_NETWORK: localhost
+
+jobs:
+  test:
+    name: Indexer (type-check, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - name: Type-check (config needs a deployment, not a live chain)
+        run: yarn workspace vehicle-shield-indexer typecheck
+        env:
+          INDEXER_NETWORK: sepolia
+          INDEXER_RPC_URL: http://127.0.0.1:1
+      - run: yarn workspace vehicle-shield-indexer test
+
+  integration:
+    name: Indexer integration (local chain)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - name: Start a local chain
+        working-directory: vehicle-backend
+        run: |
+          yarn hardhat node --port 8545 > /tmp/hardhat.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -X POST -H 'Content-Type: application/json' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' http://127.0.0.1:8545 && exit 0
+            sleep 1
+          done
+          cat /tmp/hardhat.log; exit 1
+      - name: Deploy and run the event scenario
+        working-directory: vehicle-backend
+        run: |
+          SEED_POOL_USDC=50000 yarn deploy:local
+          yarn seed:scenario --network localhost
+      - name: Start the indexer
+        working-directory: vehicle-indexer
+        run: yarn ponder start --schema ci > /tmp/ponder.log 2>&1 &
+      - name: Compare the indexer with the chain
+        working-directory: vehicle-indexer
+        run: yarn verify:chain
+      - name: Indexer log
+        if: failure()
+        run: cat /tmp/ponder.log

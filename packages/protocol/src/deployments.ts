@@ -6,6 +6,7 @@ export interface Deployment {
   network: string;
   chainId: number;
   deployedAt: string;
+  startBlock: number; // first block to index
   contracts: { InsuranceCore: string; PolicyNFT: string; USDC: string };
   usdcIsMock: boolean;
   roles: Record<string, string>;

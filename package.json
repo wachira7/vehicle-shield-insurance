@@ -4,6 +4,7 @@
   "workspaces": [
     "packages/*",
     "vehicle-backend",
-    "vehicle-api"
+    "vehicle-api",
+    "vehicle-indexer"
   ]
 }
