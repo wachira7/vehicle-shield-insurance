@@ -1,63 +1,43 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IVehicleShield.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract PolicyNFT is ERC721, Ownable, IPolicyNFT {
-    struct PolicyMetadata {
-        string vehicleId;
-        uint256 createdAt;
-        IVehicleShield.VerificationTier tier;
-        uint256 premium;
-        uint256 coverage;
+/// @title PolicyNFT
+/// @notice One token per insurance policy. Whoever holds the token receives claim payouts,
+///         so a policy can follow the vehicle when it is sold.
+contract PolicyNFT is ERC721, AccessControl {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+    string private _baseTokenURI;
+
+    constructor(address admin) ERC721("VehicleShield Policy", "VSP") {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
-    
-    mapping(uint256 => PolicyMetadata) private _policies;
-    uint256 private _nextPolicyId = 1;
-    address private _insuranceCoreAddress;
-    
-    constructor() ERC721("VehicleShield Policy", "VSP") Ownable(msg.sender) {}
-    
-    modifier onlyInsuranceCore() {
-        require(msg.sender == _insuranceCoreAddress, "Caller is not InsuranceCore");
-        _;
-    }
-    
-    function setInsuranceCoreAddress(address insuranceCoreAddress) external onlyOwner {
-        _insuranceCoreAddress = insuranceCoreAddress;
-    }
-    
-    function mintPolicy(
-        address to, 
-        string memory vehicleId,
-        IVehicleShield.VerificationTier tier,
-        uint256 premium,
-        uint256 coverage
-    ) external onlyInsuranceCore returns (uint256) {
-        uint256 policyId = _nextPolicyId++;
-        _policies[policyId] = PolicyMetadata(
-            vehicleId,
-            block.timestamp,
-            tier,
-            premium,
-            coverage
-        );
+
+    function mint(address to, uint256 policyId) external onlyRole(MINTER_ROLE) {
         _safeMint(to, policyId);
-        return policyId;
     }
-    
-    function getPolicyOwner(uint256 policyId) external view returns (address) {
-        return ownerOf(policyId);
-    }
-    
-    function getPolicyMetadata(uint256 policyId) external view returns (PolicyMetadata memory) {
-        return _policies[policyId];
-    }
-    
-    function burnPolicy(uint256 policyId) external onlyInsuranceCore {
+
+    function burn(uint256 policyId) external onlyRole(MINTER_ROLE) {
         _burn(policyId);
-        delete _policies[policyId];
+    }
+
+    function setBaseURI(string calldata baseURI) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _baseTokenURI = baseURI;
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return _baseTokenURI;
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, AccessControl)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 }

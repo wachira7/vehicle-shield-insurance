@@ -1,0 +1,60 @@
+name: Contracts CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["vehicle-backend/**", ".github/workflows/contracts-*.yml"]
+  pull_request:
+    paths: ["vehicle-backend/**", ".github/workflows/contracts-*.yml"]
+
+concurrency:
+  group: contracts-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: vehicle-backend
+
+jobs:
+  test:
+    name: Compile, type-check, test, coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: vehicle-backend/yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn compile
+      - run: yarn typecheck
+      - run: yarn test
+        env:
+          REPORT_GAS: "true"
+      - run: yarn coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: vehicle-backend/coverage
+
+  slither:
+    name: Static analysis (Slither)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: vehicle-backend/yarn.lock
+      - uses: astral-sh/setup-uv@v6
+      - run: yarn install --frozen-lockfile
+      - run: yarn compile
+      - name: Run Slither
+        run: >
+          uvx --from slither-analyzer==0.11.3 slither .
+          --hardhat-ignore-compile
+          --filter-paths "node_modules|contracts/test"
+          --exclude timestamp
+          --fail-medium
