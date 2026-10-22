@@ -2,6 +2,7 @@
   "network": "sepolia",
   "chainId": 11155111,
   "deployedAt": "2026-10-22T16:50:00.965Z",
+  "startBlock": 11970829,
   "contracts": {
     "InsuranceCore": "0x77E28604bC55A0E085771F89C84C84d6BC9c8068",
     "PolicyNFT": "0xb1566559E5B6955A6Da0C8dE396B34B585153105",

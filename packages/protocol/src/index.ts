@@ -16,5 +16,4 @@ export { PRICING_LIMITS, PRICING_VERSION, priceQuote } from "./pricing";
 export type { CoverageRequest, PriceFactor, PricingResult, VehicleProfile, VehicleUsage } from "./pricing";
 export { deployments } from "./deployments";
 export type { Deployment } from "./deployments";
-export { default as InsuranceCoreAbi } from "../abis/InsuranceCore.json";
-export { default as PolicyNFTAbi } from "../abis/PolicyNFT.json";
+export { InsuranceCoreAbi, PolicyNFTAbi } from "./abis";

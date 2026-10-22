@@ -23,6 +23,7 @@ async function main() {
 
   const policyNFT = await ethers.deployContract("PolicyNFT", [deployer.address]);
   await policyNFT.waitForDeployment();
+  const startBlock = (await policyNFT.deploymentTransaction()!.wait())!.blockNumber;
   const policyNFTAddress = await policyNFT.getAddress();
   console.log(`PolicyNFT:     ${policyNFTAddress}`);
 
@@ -59,6 +60,7 @@ async function main() {
     network: network.name,
     chainId: Number(chainId),
     deployedAt: new Date().toISOString(),
+    startBlock,
     contracts: { InsuranceCore: coreAddress, PolicyNFT: policyNFTAddress, USDC: usdcAddress },
     usdcIsMock: !env.USDC_ADDRESS,
     roles,
