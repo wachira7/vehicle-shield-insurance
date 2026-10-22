@@ -3,9 +3,9 @@ name: Contracts CI
 on:
   push:
     branches: [main]
-    paths: ["vehicle-backend/**", ".github/workflows/contracts-*.yml"]
+    paths: ["vehicle-backend/**", "packages/**", "yarn.lock", ".github/workflows/contracts-*.yml"]
   pull_request:
-    paths: ["vehicle-backend/**", ".github/workflows/contracts-*.yml"]
+    paths: ["vehicle-backend/**", "packages/**", "yarn.lock", ".github/workflows/contracts-*.yml"]
 
 concurrency:
   group: contracts-ci-${{ github.ref }}
@@ -25,8 +25,9 @@ jobs:
         with:
           node-version: 22
           cache: yarn
-          cache-dependency-path: vehicle-backend/yarn.lock
+          cache-dependency-path: yarn.lock
       - run: yarn install --frozen-lockfile
+        working-directory: .
       - run: yarn compile
       - run: yarn typecheck
       - run: yarn test
@@ -47,9 +48,10 @@ jobs:
         with:
           node-version: 22
           cache: yarn
-          cache-dependency-path: vehicle-backend/yarn.lock
+          cache-dependency-path: yarn.lock
       - uses: astral-sh/setup-uv@v6
       - run: yarn install --frozen-lockfile
+        working-directory: .
       - run: yarn compile
       - name: Run Slither
         run: >

@@ -1,0 +1,9 @@
+{
+  "name": "vehicle-shield",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "vehicle-backend",
+    "vehicle-api"
+  ]
+}

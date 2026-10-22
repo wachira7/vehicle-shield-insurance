@@ -1,4 +1,4 @@
-// Verifies an existing deployment on Sourcify, reading addresses from deployments/<network>.json.
+// Verifies an existing deployment on Sourcify, reading addresses from packages/protocol/deployments/<network>.json.
 // Usage: DEPLOYMENT_NETWORK=sepolia yarn verify:sourcify
 import fs from "fs";
 import path from "path";
@@ -7,7 +7,7 @@ import { verifyOnSourcify } from "./lib/sourcify";
 
 async function main() {
   const networkName = process.env.DEPLOYMENT_NETWORK || "sepolia";
-  const file = path.join(__dirname, `../deployments/${networkName}.json`);
+  const file = path.join(__dirname, `../../packages/protocol/deployments/${networkName}.json`);
   const deployment = JSON.parse(fs.readFileSync(file, "utf8"));
 
   const targets: [string, string][] = [

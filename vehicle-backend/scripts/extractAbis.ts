@@ -4,7 +4,7 @@ import path from 'path';
 
 async function main() {
     // Create abis directory if it doesn't exist
-    const abiDir = path.join(__dirname, '../abis');
+    const abiDir = path.join(__dirname, '../../packages/protocol/abis');
     if (!fs.existsSync(abiDir)) {
         fs.mkdirSync(abiDir);
     }

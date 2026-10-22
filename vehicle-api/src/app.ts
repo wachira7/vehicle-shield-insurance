@@ -1,0 +1,142 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { formatUnits, getAddress, isAddress, parseUnits, type BaseWallet } from "ethers";
+import { z } from "zod";
+import {
+  createSignedQuote,
+  priceQuote,
+  quoteDomain,
+  serializeQuote,
+  vehicleIdFor,
+  type Deployment,
+  type PricingResult,
+} from "@vehicle-shield/protocol";
+import type { VehicleVerifier } from "./verification";
+
+export interface AppOptions {
+  signer: BaseWallet;
+  deployment: Deployment;
+  vehicleIdSalt: string;
+  verifier: VehicleVerifier;
+  corsOrigins?: string[];
+  now?: () => Date;
+}
+
+const usdcAmount = z
+  .union([z.number(), z.string()])
+  .transform((value) => String(value))
+  .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Use a positive amount with at most 2 decimal places")
+  .transform((value) => parseUnits(value, 6));
+
+const estimateRequest = z.object({
+  vehicle: z.object({
+    year: z.number().int().min(1950).max(2100),
+    marketValueUsdc: usdcAmount,
+    mileageKm: z.number().int().min(0),
+    condition: z.number().int().min(1).max(10),
+    accidentsLast3Years: z.number().int().min(0).max(20),
+    usage: z.enum(["private", "commercial"]),
+  }),
+  coverageUsdc: usdcAmount,
+  deductibleUsdc: usdcAmount,
+  durationDays: z.number().int(),
+});
+
+const quoteRequest = estimateRequest.extend({
+  buyer: z.string().refine((value) => isAddress(value), "Not a valid address").transform((value) => getAddress(value)),
+  plate: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9 -]{2,15}$/, "Use 2 to 15 letters, digits, spaces or hyphens"),
+});
+
+const usdc = (amount: bigint) => formatUnits(amount, 6);
+
+function describePrice(price: Extract<PricingResult, { eligible: true }>) {
+  return {
+    premiumUsdc: usdc(price.premium),
+    annualPremiumUsdc: usdc(price.annualPremium),
+    factors: price.factors.map((factor) => ({ ...factor, multiplier: factor.multiplierBps / 10_000 })),
+    pricingVersion: price.pricingVersion,
+  };
+}
+
+export function createApp({ signer, deployment, vehicleIdSalt, verifier, corsOrigins = [], now = () => new Date() }: AppOptions) {
+  const app = new Hono();
+  const domain = quoteDomain(deployment.chainId, deployment.contracts.InsuranceCore);
+
+  app.use("/v1/*", cors({ origin: corsOrigins, allowMethods: ["POST"] }));
+
+  app.onError((error, c) => {
+    console.error(error);
+    return c.json({ error: "internal_error" }, 500);
+  });
+
+  app.get("/health", (c) =>
+    c.json({
+      ok: true,
+      network: deployment.network,
+      chainId: deployment.chainId,
+      insuranceCore: deployment.contracts.InsuranceCore,
+      quoteSigner: signer.address,
+    }),
+  );
+
+  /// Instant price with no wallet: lets people compare cover before connecting.
+  app.post("/v1/quotes/estimate", async (c) => {
+    const parsed = estimateRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "invalid_request", issues: parsed.error.issues }, 400);
+    const { vehicle, ...request } = parsed.data;
+
+    const price = priceQuote(
+      { ...vehicle, marketValue: vehicle.marketValueUsdc },
+      { coverage: request.coverageUsdc, deductible: request.deductibleUsdc, durationDays: request.durationDays },
+      now(),
+    );
+    if (!price.eligible) return c.json({ error: "not_eligible", reasons: price.reasons }, 422);
+    return c.json(describePrice(price));
+  });
+
+  /// Signed quote the buyer submits to InsuranceCore.buyPolicy.
+  app.post("/v1/quotes", async (c) => {
+    const parsed = quoteRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "invalid_request", issues: parsed.error.issues }, 400);
+    const { vehicle, buyer, plate, ...request } = parsed.data;
+
+    const price = priceQuote(
+      { ...vehicle, marketValue: vehicle.marketValueUsdc },
+      { coverage: request.coverageUsdc, deductible: request.deductibleUsdc, durationDays: request.durationDays },
+      now(),
+    );
+    if (!price.eligible) return c.json({ error: "not_eligible", reasons: price.reasons }, 422);
+
+    const vehicleId = vehicleIdFor(plate, vehicleIdSalt);
+    if (!(await verifier.isApproved(vehicleId, buyer))) {
+      return c.json({ error: "vehicle_not_verified", vehicleId }, 403);
+    }
+
+    const { quote, signature } = await createSignedQuote(
+      signer,
+      domain,
+      {
+        buyer,
+        vehicleId,
+        coverage: request.coverageUsdc,
+        premium: price.premium,
+        deductible: request.deductibleUsdc,
+        durationDays: request.durationDays,
+      },
+      { nowSeconds: Math.floor(now().getTime() / 1000) },
+    );
+
+    return c.json({
+      quote: serializeQuote(quote),
+      signature,
+      expiresAt: new Date(Number(quote.deadline) * 1000).toISOString(),
+      contract: { chainId: deployment.chainId, insuranceCore: deployment.contracts.InsuranceCore, usdc: deployment.contracts.USDC },
+      ...describePrice(price),
+    });
+  });
+
+  return app;
+}

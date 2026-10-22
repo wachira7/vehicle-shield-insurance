@@ -1,4 +1,4 @@
-// Read-only health check of a deployment recorded in deployments/<network>.json.
+// Read-only health check of a deployment recorded in packages/protocol/deployments/<network>.json.
 // Usage: yarn check:deployment --network sepolia
 import fs from "fs";
 import path from "path";
@@ -6,7 +6,7 @@ import { ethers, network } from "hardhat";
 
 async function main() {
   const deployment = JSON.parse(
-    fs.readFileSync(path.join(__dirname, `../deployments/${network.name}.json`), "utf8"),
+    fs.readFileSync(path.join(__dirname, `../../packages/protocol/deployments/${network.name}.json`), "utf8"),
   );
   const { InsuranceCore, PolicyNFT, USDC } = deployment.contracts;
   const core = await ethers.getContractAt("InsuranceCore", InsuranceCore);

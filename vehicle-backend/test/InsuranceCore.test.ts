@@ -2,7 +2,16 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-toolbox/network-help
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { QUOTE_TYPES, quoteDomain, randomNonce, signQuote, vehicleIdFor, type Quote } from "../scripts/lib/quote";
+import {
+  QUOTE_TYPES,
+  createSignedQuote,
+  priceQuote,
+  quoteDomain,
+  randomNonce,
+  signQuote,
+  vehicleIdFor,
+  type Quote,
+} from "@vehicle-shield/protocol";
 
 const USDC = (n: number | string) => ethers.parseUnits(String(n), 6);
 const DAY = 86_400n;
@@ -213,6 +222,44 @@ describe("InsuranceCore", () => {
       const quote = await makeQuote();
       const signature = await signQuote(quoteSigner, domain, quote);
       await expect(core.connect(alice).buyPolicy(quote, signature)).to.be.revertedWithCustomError(core, "EnforcedPause");
+    });
+  });
+
+  describe("quotes from the pricing service", () => {
+    it("accepts a quote priced and signed by the shared protocol package", async () => {
+      const { core, nft, domain, quoteSigner, alice } = await loadFixture(deployFixture);
+      const price = priceQuote(
+        {
+          year: 2021,
+          marketValue: USDC(20_000),
+          mileageKm: 80_000,
+          condition: 7,
+          accidentsLast3Years: 1,
+          usage: "private",
+        },
+        { coverage: USDC(15_000), deductible: USDC(500), durationDays: 180 },
+      );
+      if (!price.eligible) throw new Error(price.reasons.join(" "));
+
+      const { quote, signature } = await createSignedQuote(
+        quoteSigner,
+        domain,
+        {
+          buyer: alice.address,
+          vehicleId: vehicleIdFor("KDA 123A", "test-salt"),
+          coverage: USDC(15_000),
+          premium: price.premium,
+          deductible: USDC(500),
+          durationDays: 180,
+        },
+        { nowSeconds: await time.latest() },
+      );
+
+      await core.connect(alice).buyPolicy(quote, signature);
+      const policy = await core.getPolicy(1n);
+      expect(policy.premium).to.equal(price.premium);
+      expect(policy.endTime - policy.startTime).to.equal(180n * DAY);
+      expect(await nft.ownerOf(1n)).to.equal(alice.address);
     });
   });
 
