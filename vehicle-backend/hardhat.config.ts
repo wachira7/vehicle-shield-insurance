@@ -4,24 +4,33 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const { SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY, REPORT_GAS } = process.env;
+
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.20",
+    version: "0.8.24",
+    // OpenZeppelin 5.4+ uses mcopy, which needs Cancun (live on mainnet and Sepolia).
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: 200,
       },
+      evmVersion: "cancun",
     },
   },
   networks: {
-    sepolia: {
-      url: process.env.SEPOLIA_URL || "",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    },
+    ...(SEPOLIA_RPC_URL && {
+      sepolia: {
+        url: SEPOLIA_RPC_URL,
+        accounts: DEPLOYER_PRIVATE_KEY ? [DEPLOYER_PRIVATE_KEY] : [],
+      },
+    }),
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
+    apiKey: ETHERSCAN_API_KEY || "",
+  },
+  gasReporter: {
+    enabled: Boolean(REPORT_GAS),
   },
 };
 

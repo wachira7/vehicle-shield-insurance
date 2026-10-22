@@ -10,7 +10,7 @@ async function main() {
     }
 
     // List of contracts to extract ABIs from
-    const contracts = ['InsuranceCore', 'PolicyNFT', 'RiskAssessment','IVehicleShield' ];
+    const contracts = ['InsuranceCore', 'PolicyNFT'];
 
     contracts.forEach(contractName => {
         // Read the artifact file

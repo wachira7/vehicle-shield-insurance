@@ -1,59 +1,80 @@
-import { ethers } from "hardhat";
+import fs from "fs";
+import path from "path";
+import { ethers, network } from "hardhat";
 
+// Optional environment:
+//   USDC_ADDRESS        existing stablecoin; a MockUSDC is deployed when unset
+//   QUOTE_SIGNER_ADDRESS, ASSESSOR_ADDRESS, TREASURER_ADDRESS, PAUSER_ADDRESS
+//                       role holders; each defaults to the deployer
+//   SEED_POOL_USDC      whole USDC to mint into the pool (MockUSDC only)
 async function main() {
-  console.log("Deploying VehicleShield contracts...");
+  const [deployer] = await ethers.getSigners();
+  const env = process.env;
+  console.log(`Deploying to ${network.name} as ${deployer.address}`);
 
-  try {
-    // Deploy PolicyNFT first
-    const PolicyNFT = await ethers.getContractFactory("PolicyNFT");
-    const policyNFT = await PolicyNFT.deploy();
-    await policyNFT.waitForDeployment();
-    console.log(`PolicyNFT deployed to: ${await policyNFT.getAddress()}`);
+  let usdcAddress = env.USDC_ADDRESS;
+  if (!usdcAddress) {
+    const mock = await ethers.deployContract("MockUSDC");
+    await mock.waitForDeployment();
+    usdcAddress = await mock.getAddress();
+    console.log(`MockUSDC:      ${usdcAddress}`);
+  }
 
-    // Deploy RiskAssessment
-    const RiskAssessment = await ethers.getContractFactory("RiskAssessment");
-    const riskAssessment = await RiskAssessment.deploy();
-    await riskAssessment.waitForDeployment();
-    console.log(`RiskAssessment deployed to: ${await riskAssessment.getAddress()}`);
+  const policyNFT = await ethers.deployContract("PolicyNFT", [deployer.address]);
+  await policyNFT.waitForDeployment();
+  const policyNFTAddress = await policyNFT.getAddress();
+  console.log(`PolicyNFT:     ${policyNFTAddress}`);
 
-    // Deploy InsuranceCore with PolicyNFT and RiskAssessment addresses
-    const InsuranceCore = await ethers.getContractFactory("InsuranceCore");
-    const insuranceCore = await InsuranceCore.deploy(
-      await policyNFT.getAddress(),
-      await riskAssessment.getAddress()
-    );
-    await insuranceCore.waitForDeployment();
-    console.log(`InsuranceCore deployed to: ${await insuranceCore.getAddress()}`);
+  const core = await ethers.deployContract("InsuranceCore", [deployer.address, usdcAddress, policyNFTAddress]);
+  await core.waitForDeployment();
+  const coreAddress = await core.getAddress();
+  console.log(`InsuranceCore: ${coreAddress}`);
 
-    // Set InsuranceCore address in PolicyNFT
-    const setTx = await policyNFT.setInsuranceCoreAddress(await insuranceCore.getAddress());
-    await setTx.wait();
-    console.log("InsuranceCore address set in PolicyNFT");
+  await (await policyNFT.grantRole(await policyNFT.MINTER_ROLE(), coreAddress)).wait();
 
-    console.log("\nDeployment complete!");
-    console.log("\nContract Addresses:");
-    console.log("-------------------");
-    console.log(`PolicyNFT: ${await policyNFT.getAddress()}`);
-    console.log(`RiskAssessment: ${await riskAssessment.getAddress()}`);
-    console.log(`InsuranceCore: ${await insuranceCore.getAddress()}`);
+  const roles = {
+    QUOTE_SIGNER_ROLE: env.QUOTE_SIGNER_ADDRESS || deployer.address,
+    ASSESSOR_ROLE: env.ASSESSOR_ADDRESS || deployer.address,
+    TREASURER_ROLE: env.TREASURER_ADDRESS || deployer.address,
+    PAUSER_ROLE: env.PAUSER_ADDRESS || deployer.address,
+  };
+  for (const [role, holder] of Object.entries(roles)) {
+    const roleId = await core.getFunction(role)();
+    await (await core.grantRole(roleId, holder)).wait();
+    console.log(`Granted ${role} to ${holder}`);
+  }
 
-    // Verify instructions
-    console.log("\nTo verify on Etherscan:");
-    console.log("------------------------");
-    console.log(`npx hardhat verify --network sepolia ${await policyNFT.getAddress()}`);
-    console.log(`npx hardhat verify --network sepolia ${await riskAssessment.getAddress()}`);
-    console.log(`npx hardhat verify --network sepolia ${await insuranceCore.getAddress()} "${await policyNFT.getAddress()}" "${await riskAssessment.getAddress()}"`);
+  if (!env.USDC_ADDRESS && env.SEED_POOL_USDC) {
+    const usdc = await ethers.getContractAt("MockUSDC", usdcAddress);
+    const amount = ethers.parseUnits(env.SEED_POOL_USDC, 6);
+    await (await usdc.mint(deployer.address, amount)).wait();
+    await (await usdc.approve(coreAddress, amount)).wait();
+    await (await core.fundPool(amount)).wait();
+    console.log(`Seeded pool with ${env.SEED_POOL_USDC} USDC`);
+  }
 
-  } catch (error) {
-    console.error("Error during deployment:", error);
-    throw error;
+  const { chainId } = await ethers.provider.getNetwork();
+  const deployment = {
+    network: network.name,
+    chainId: Number(chainId),
+    deployedAt: new Date().toISOString(),
+    contracts: { InsuranceCore: coreAddress, PolicyNFT: policyNFTAddress, USDC: usdcAddress },
+    roles,
+  };
+  const outDir = path.join(__dirname, "../deployments");
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, `${network.name}.json`), JSON.stringify(deployment, null, 2) + "\n");
+  console.log(`Wrote deployments/${network.name}.json`);
+
+  if (network.name === "sepolia") {
+    console.log("\nVerify with:");
+    if (!env.USDC_ADDRESS) console.log(`  yarn hardhat verify --network sepolia ${usdcAddress}`);
+    console.log(`  yarn hardhat verify --network sepolia ${policyNFTAddress} ${deployer.address}`);
+    console.log(`  yarn hardhat verify --network sepolia ${coreAddress} ${deployer.address} ${usdcAddress} ${policyNFTAddress}`);
   }
 }
 
-// Run the deployment
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
