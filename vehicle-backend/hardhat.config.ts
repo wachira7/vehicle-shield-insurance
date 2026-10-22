@@ -26,9 +26,10 @@ const config: HardhatUserConfig = {
       },
     }),
   },
-  // Sourcify needs no API key; Etherscan verification runs only when a key is set.
+  // Sourcify verification goes through scripts/lib/sourcify.ts: hardhat-verify 2.x
+  // still calls Sourcify's removed v1 API. Etherscan verification runs only with a key.
   sourcify: {
-    enabled: true,
+    enabled: false,
   },
   etherscan: {
     enabled: Boolean(ETHERSCAN_API_KEY),
