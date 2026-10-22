@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { ethers, network, run } from "hardhat";
+import hre, { ethers, network, run } from "hardhat";
+import { verifyOnSourcify } from "./lib/sourcify";
 
 // Optional environment:
 //   USDC_ADDRESS        existing stablecoin; a MockUSDC is deployed when unset
@@ -59,6 +60,7 @@ async function main() {
     chainId: Number(chainId),
     deployedAt: new Date().toISOString(),
     contracts: { InsuranceCore: coreAddress, PolicyNFT: policyNFTAddress, USDC: usdcAddress },
+    usdcIsMock: !env.USDC_ADDRESS,
     roles,
   };
   const outDir = path.join(__dirname, "../deployments");
@@ -69,14 +71,15 @@ async function main() {
   if (network.name === "sepolia") {
     // Let the explorers index the bytecode before verifying.
     await core.deploymentTransaction()?.wait(5);
-    const toVerify: [string, unknown[]][] = [
-      [policyNFTAddress, [deployer.address]],
-      [coreAddress, [deployer.address, usdcAddress, policyNFTAddress]],
+    const toVerify: [string, string, unknown[]][] = [
+      [policyNFTAddress, "contracts/PolicyNFT.sol:PolicyNFT", [deployer.address]],
+      [coreAddress, "contracts/InsuranceCore.sol:InsuranceCore", [deployer.address, usdcAddress, policyNFTAddress]],
     ];
-    if (!env.USDC_ADDRESS) toVerify.unshift([usdcAddress, []]);
-    for (const [address, constructorArguments] of toVerify) {
+    if (!env.USDC_ADDRESS) toVerify.unshift([usdcAddress, "contracts/test/MockUSDC.sol:MockUSDC", []]);
+    for (const [address, contract, constructorArguments] of toVerify) {
       try {
-        await run("verify:verify", { address, constructorArguments });
+        console.log(`Sourcify ${contract}: ${await verifyOnSourcify(hre, Number(chainId), address, contract)}`);
+        if (env.ETHERSCAN_API_KEY) await run("verify:verify", { address, contract, constructorArguments });
       } catch (error) {
         console.warn(`Verification of ${address} failed; the deployment itself succeeded.`, error);
       }

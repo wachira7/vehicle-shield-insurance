@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-    "abis": "hardhat run scripts/extractAbis.ts"
+    "abis": "hardhat run scripts/extractAbis.ts",
+    "verify:sourcify": "hardhat run scripts/verify-sourcify.ts",
+    "check:deployment": "hardhat run scripts/check-deployment.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.2.0"
