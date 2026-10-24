@@ -6,13 +6,14 @@ import { VehicleRow } from "@/components/vehicle-row";
 import { ButtonLink, Card } from "@/components/ui";
 import { formatUsdcUnits } from "@/lib/format";
 import { daysLeft, nextStep, type NextStep } from "@/lib/next-step";
-import { usePolicies, useVehicles } from "@/lib/queries";
+import { useClaims, usePolicies, useVehicles } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 
 export default function DashboardHome() {
   const { profile } = useSession();
   const vehicles = useVehicles();
   const policies = usePolicies();
+  const claims = useClaims();
   const loading = vehicles.isPending || policies.isPending;
   const firstName = profile?.fullName.split(" ")[0];
 
@@ -33,7 +34,7 @@ export default function DashboardHome() {
           </button>
         </Card>
       ) : (
-        <NextStepCard step={nextStep(vehicles.data ?? [], policies.data ?? [])} />
+        <NextStepCard step={nextStep(vehicles.data ?? [], policies.data ?? [], claims.data ?? [])} />
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -127,6 +128,14 @@ function NextStepCard({ step }: { step: NextStep }) {
       title: "Your car is verified",
       body: "You can now buy cover, priced from the details the assessor confirmed.",
       action: step.kind === "buy-cover" ? { href: `/dashboard/vehicles/${step.vehicle.id}/buy`, label: "Buy cover" } : undefined,
+    },
+    "collect-payout": {
+      title: "Your claim was approved",
+      body:
+        step.kind === "collect-payout"
+          ? `Claim #${step.claim.id}: ${formatUsdcUnits(step.claim.payoutAmount ?? "0")} is ready for you after your deductible.`
+          : "",
+      action: step.kind === "collect-payout" ? { href: `/dashboard/claims/${step.claim.id}`, label: "Collect payout" } : undefined,
     },
     covered: {
       title: "You're covered",

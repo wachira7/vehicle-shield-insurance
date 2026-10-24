@@ -263,3 +263,72 @@ export interface SignedQuote {
 
 export const requestSignedQuote = (body: EstimateInput & { buyer: string; plate: string }) =>
   request<SignedQuote>("/v1/quotes", { method: "POST", body: JSON.stringify(body) });
+
+// ---------------------------------------------------------------------------
+// Claims
+// ---------------------------------------------------------------------------
+
+export type ClaimStatus = "Submitted" | "UnderReview" | "Approved" | "Rejected" | "Paid";
+
+export interface ClaimRecord {
+  id: string;
+  policyId: string;
+  requestedAmount: string;
+  approvedAmount: string | null;
+  payoutAmount: string | null;
+  evidenceUri: string;
+  status: ClaimStatus;
+  rejectionReason: string | null;
+  submittedAt: string;
+  updatedAt: string;
+  timeline: { status: ClaimStatus; timestamp: string; txHash: string }[];
+}
+
+export interface PolicyDetail extends PolicySummary {
+  claims: ClaimRecord[];
+}
+
+export async function fetchPolicyDetail(id: string): Promise<PolicyDetail | null> {
+  try {
+    const response = await fetch(`${INDEXER_URL}/v1/policies/${id}`);
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+/// Uploads a claim's photos (encrypted by the API) and returns the evidence URI to submit on-chain.
+export function uploadClaimEvidence(
+  token: string,
+  policyId: string,
+  description: string,
+  files: Blob[],
+  onProgress: (fraction: number) => void,
+): Promise<{ evidenceUri: string; photos: { id: string }[] }> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.set("policyId", policyId);
+    if (description.trim()) form.set("description", description.trim());
+    files.forEach((file, index) => form.append("files", file, `damage-${index + 1}.jpg`));
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}/v1/claims/evidence`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (event) => event.lengthComputable && onProgress(event.loaded / event.total);
+    xhr.onload = () => {
+      let body: Record<string, unknown> = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as unknown as { evidenceUri: string; photos: { id: string }[] });
+      else reject(new ApiError(xhr.status, body));
+    };
+    xhr.onerror = () => reject(new ApiError(0, { error: "unreachable" }));
+    xhr.send(form);
+  });
+}
+
+export const getMyEvidence = (token: string, uri: string) =>
+  request<{ uri: string; policyId: string; description: string | null; photos: { id: string }[] }>(
+    `/v1/claims/evidence?uri=${encodeURIComponent(uri)}`,
+    { token },
+  );

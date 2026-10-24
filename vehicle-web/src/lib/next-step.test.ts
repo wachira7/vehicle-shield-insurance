@@ -63,6 +63,14 @@ describe("nextStep", () => {
   });
 });
 
+describe("approved claims", () => {
+  it("come first: there's money waiting", () => {
+    const claim = { id: "3", status: "Approved" } as never;
+    expect(nextStep([vehicle({ status: "rejected" })], [policy("active")], [claim]).kind).toBe("collect-payout");
+    expect(nextStep([], [], [{ id: "4", status: "Paid" } as never]).kind).toBe("add-vehicle");
+  });
+});
+
 describe("daysLeft", () => {
   it("rounds up and never goes negative", () => {
     const now = 1_000_000_000_000;

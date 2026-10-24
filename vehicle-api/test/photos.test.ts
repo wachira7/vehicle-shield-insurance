@@ -250,9 +250,10 @@ describe("verified vehicles", () => {
 });
 
 describe("claim evidence", () => {
-  function uploadEvidence(files: Uint8Array[], policyId = "1", headers = auth) {
+  function uploadEvidence(files: Uint8Array[], policyId = "1", headers = auth, description?: string) {
     const form = new FormData();
     form.set("policyId", policyId);
+    if (description !== undefined) form.set("description", description);
     for (const file of files) form.append("files", new File([new Uint8Array(file)], "damage.jpg", { type: "image/jpeg" }));
     return app().request("/v1/claims/evidence", { method: "POST", headers, body: form });
   }
@@ -287,5 +288,25 @@ describe("claim evidence", () => {
 
   it("needs a signed-in wallet", async () => {
     expect((await uploadEvidence([jpeg()], "1", {})).status).toBe(401);
+  });
+
+  it("keeps the description private and lets only the owner look the evidence up", async () => {
+    const description = "Reversed into a pole at Westgate parking, rear bumper cracked";
+    const { evidenceId, evidenceUri, photos } = await (await uploadEvidence([jpeg(), png()], "9", auth, description)).json();
+
+    const manifest = Buffer.from(store.objects.get(`evidence/${evidenceId}.json`)!).toString();
+    expect(manifest).not.toContain("Westgate");
+
+    const lookup = (headers: Record<string, string>) =>
+      app().request(`/v1/claims/evidence?uri=${encodeURIComponent(evidenceUri)}`, { headers });
+    const mine = await lookup(auth);
+    expect(mine.status).toBe(200);
+    expect(await mine.json()).toMatchObject({ policyId: "9", description, photos: photos.map((p: { id: string }) => ({ id: p.id })) });
+    expect((await lookup(strangerAuth)).status).toBe(404);
+    expect((await app().request("/v1/claims/evidence", { headers: auth })).status).toBe(400);
+  });
+
+  it("limits the description length", async () => {
+    expect((await uploadEvidence([jpeg()], "1", auth, "x".repeat(1_001))).status).toBe(400);
   });
 });

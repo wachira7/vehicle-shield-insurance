@@ -212,6 +212,8 @@ export function evidenceRoutes(deps: PhotoDeps) {
       const body = await c.req.parseBody({ all: true });
       const policyId = z.string().regex(/^\d{1,30}$/).safeParse(body.policyId);
       if (!policyId.success) return c.json({ error: "invalid_policy_id" }, 400);
+      const description = z.string().trim().max(1_000).optional().safeParse(body.description ?? undefined);
+      if (!description.success) return c.json({ error: "invalid_description", reason: "Keep the description under 1,000 characters" }, 400);
       const files = ([] as unknown[]).concat(body.files ?? []);
       if (files.length === 0 || files.length > MAX_EVIDENCE_PHOTOS) {
         return c.json({ error: "invalid_files", reason: `Attach 1 to ${MAX_EVIDENCE_PHOTOS} photos` }, 400);
@@ -249,12 +251,30 @@ export function evidenceRoutes(deps: PhotoDeps) {
           policyId: BigInt(policyId.data),
           manifestCid: stored.cid,
           uri: stored.uri,
+          description: description.data || null,
         });
         await tx.insert(schema.photos).values(rows);
       });
       return c.json({ evidenceId, evidenceUri: stored.uri, photos: rows.map(({ id, cid }) => ({ id, cid })) }, 201);
     },
   );
+
+  /// The caller's own evidence for a claim, by the evidence URI recorded on-chain.
+  app.get("/", async (c) => {
+    const uri = c.req.query("uri");
+    if (!uri) return c.json({ error: "invalid_request", reason: "Pass ?uri=<evidence URI>" }, 400);
+    const [evidence] = await deps.db
+      .select()
+      .from(schema.claimEvidence)
+      .where(and(eq(schema.claimEvidence.uri, uri), eq(schema.claimEvidence.owner, c.get("address"))));
+    if (!evidence) return c.json({ error: "not_found" }, 404);
+    const photos = await deps.db
+      .select({ id: schema.photos.id, contentType: schema.photos.contentType })
+      .from(schema.photos)
+      .where(eq(schema.photos.evidenceId, evidence.id))
+      .orderBy(asc(schema.photos.createdAt));
+    return c.json({ uri: evidence.uri, policyId: evidence.policyId.toString(), description: evidence.description, photos });
+  });
 
   return app;
 }
