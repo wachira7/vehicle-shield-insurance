@@ -18,7 +18,7 @@ export function ProfileForm() {
   const { embeddedWalletInfo } = useAppKitAccount();
   const [fields, setFields] = useState<Fields>({ fullName: "", email: "", phone: "" });
   const [errors, setErrors] = useState<Partial<Fields> & { form?: string }>({});
-  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const isNew = profile === null;
 
   // Start from the saved profile, or the email from a Google/email sign-in.
@@ -30,7 +30,7 @@ export function ProfileForm() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!token) return;
-    setSaving(true);
+    setState("saving");
     setErrors({});
     try {
       const { profile: saved } = await saveProfile(token, {
@@ -39,14 +39,16 @@ export function ProfileForm() {
         phone: fields.phone || undefined,
       });
       setProfile(saved);
-      router.replace(next);
+      setState("saved");
+      // A moment to show it worked, then carry on.
+      setTimeout(() => router.replace(next), 600);
     } catch (error) {
       if (error instanceof ApiError && error.status === 400 && error.body.fields) {
         setErrors(error.body.fields as Partial<Fields>);
       } else {
         setErrors({ form: "We couldn't save your details. Check your connection and try again." });
       }
-      setSaving(false);
+      setState("idle");
     }
   };
 
@@ -76,8 +78,8 @@ export function ProfileForm() {
               {errors.form}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={saving}>
-            {saving ? "Saving…" : isNew ? "Finish" : "Save"}
+          <Button type="submit" className="w-full" disabled={state !== "idle"}>
+            {state === "saving" ? "Saving…" : state === "saved" ? "Saved ✓" : isNew ? "Finish" : "Save"}
           </Button>
         </form>
       </div>
