@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { loadConfig } from "./config";
 import { openDatabase } from "./db";
-import { onchainAssessorCheck } from "./roles";
+import { onchainAssessorCheck, rpcSignatureCheck } from "./roles";
 import { filebaseStore, localStore } from "./storage";
 import { databaseVerifier } from "./verification";
 
@@ -32,6 +32,7 @@ const app = createApp({
   siweDomain: config.siweDomain,
   store,
   photoKey: config.photoKey,
+  verifySignature: config.rpcUrl ? rpcSignatureCheck(config.rpcUrl) : undefined,
   isAssessor: config.rpcUrl
     ? onchainAssessorCheck({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
     : async () => false,

@@ -1,0 +1,98 @@
+"use client";
+
+import { useState } from "react";
+import { useAppKitAccount } from "@reown/appkit/react";
+import { shortAddress } from "@/components/app-header";
+import { ButtonLink, Card } from "@/components/ui";
+import { useSession } from "@/lib/session";
+
+const providerNames: Record<string, string> = {
+  google: "Google",
+  apple: "Apple",
+  x: "X",
+  discord: "Discord",
+  github: "GitHub",
+  email: "email",
+};
+
+export function AccountOverview() {
+  const { address, profile } = useSession();
+  const { embeddedWalletInfo } = useAppKitAccount();
+  const [copied, setCopied] = useState(false);
+  const method = embeddedWalletInfo?.authProvider ? providerNames[embeddedWalletInfo.authProvider] : undefined;
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(address!);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10 sm:px-6 sm:py-14">
+      <div className="animate-step-in">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {profile?.fullName ? `Welcome, ${profile.fullName.split(" ")[0]}` : "Your account"}
+        </h1>
+        <p className="mt-1 text-ink-muted">
+          Signed in {method ? `with ${method}` : "with your wallet"}.
+        </p>
+      </div>
+
+      <Card className="animate-step-in">
+        <h2 className="font-semibold">Get covered</h2>
+        <p className="mt-1 text-sm text-ink-muted">
+          Check your price, then verify your car with six photos. An assessor confirms the details before cover
+          starts.
+        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <ButtonLink href="/quote">Get a quote</ButtonLink>
+          <span className="inline-flex items-center rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-faint">
+            Car verification opens next
+          </span>
+        </div>
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Your details</h2>
+            <ButtonLink href="/register?next=/account" variant="ghost" className="px-0 py-0">
+              Edit
+            </ButtonLink>
+          </div>
+          {profile ? (
+            <dl className="mt-3 space-y-2 text-sm">
+              <div>
+                <dt className="text-ink-faint">Name</dt>
+                <dd>{profile.fullName}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-faint">Email</dt>
+                <dd>{profile.email}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-faint">Phone</dt>
+                <dd>{profile.phone ?? "Not added"}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="mt-3 text-sm text-ink-muted">Add your name and email so we can reach you about claims.</p>
+          )}
+        </Card>
+
+        <Card>
+          <h2 className="font-semibold">Your wallet</h2>
+          <p className="mt-1 text-sm text-ink-muted">Policies and payouts are held here. Only you control it.</p>
+          <button
+            type="button"
+            onClick={copy}
+            className="mt-4 flex w-full items-center justify-between rounded-xl border border-line bg-bg px-3 py-3 font-mono text-sm hover:border-action"
+          >
+            {shortAddress(address!)}
+            <span className="font-sans text-xs text-ink-muted">{copied ? "Copied" : "Copy"}</span>
+          </button>
+        </Card>
+      </div>
+    </div>
+  );
+}
