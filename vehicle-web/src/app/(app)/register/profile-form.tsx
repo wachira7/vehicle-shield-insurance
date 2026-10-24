@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
+import { PhoneInput } from "@/components/phone-input";
 import { Steps } from "@/components/steps";
 import { Button, Card } from "@/components/ui";
 import { ApiError, saveProfile } from "@/lib/api";
 import { useFieldErrors } from "@/lib/form";
+import { phoneError } from "@/lib/phone";
 import { safeNext } from "@/lib/redirect";
 import { useSession } from "@/lib/session";
 
@@ -23,17 +25,27 @@ export function ProfileForm() {
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const isNew = profile === null;
 
-  // Start from the saved profile, or the email from a Google/email sign-in.
+  // Start from the saved profile, or the email from a Google/email sign-in, once. The wallet
+  // SDK hands out a new embeddedWalletInfo object on every refresh, so re-applying this on each
+  // change would wipe whatever the person is typing.
+  const prefilled = useRef(false);
+  const signInEmail = embeddedWalletInfo?.user?.email;
   useEffect(() => {
-    if (profile) setFields({ fullName: profile.fullName, email: profile.email, phone: profile.phone ?? "" });
-    else if (embeddedWalletInfo?.user?.email) setFields((f) => ({ ...f, email: f.email || embeddedWalletInfo.user!.email! }));
-  }, [profile, embeddedWalletInfo]);
+    if (prefilled.current) return;
+    if (profile) {
+      prefilled.current = true;
+      setFields({ fullName: profile.fullName, email: profile.email, phone: profile.phone ?? "" });
+    } else if (profile === null && signInEmail) {
+      prefilled.current = true;
+      setFields((f) => ({ ...f, email: f.email || signInEmail }));
+    }
+  }, [profile, signInEmail]);
 
   // The same rules the API applies (vehicle-api/src/profile.ts), checked as you go.
   const checks: Partial<Fields> = {
     ...(fields.fullName.trim().length < 2 && { fullName: "Enter your full name" }),
     ...(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(fields.email.trim()) && { email: "Enter an email like name@example.com" }),
-    ...(fields.phone.trim() && !/^\+?[0-9][0-9 ()-]{6,19}$/.test(fields.phone.trim()) && { phone: "Enter a phone number like +254 712 345 678" }),
+    ...(phoneError(fields.phone) && { phone: phoneError(fields.phone) }),
   };
   const { shown, blur, attemptSubmit } = useFieldErrors(checks);
   const errorFor = (key: keyof Fields) => shown(key) ?? serverErrors[key];
@@ -75,16 +87,7 @@ export function ProfileForm() {
         <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
           <Field label="Full name" autoComplete="name" value={fields.fullName} error={errorFor("fullName")} onBlur={() => blur("fullName")} onChange={(v) => setFields({ ...fields, fullName: v })} />
           <Field label="Email" type="email" autoComplete="email" value={fields.email} error={errorFor("email")} onBlur={() => blur("email")} onChange={(v) => setFields({ ...fields, email: v })} />
-          <Field
-            label="Phone (optional)"
-            type="tel"
-            autoComplete="tel"
-            placeholder="+254 712 345 678"
-            value={fields.phone}
-            error={errorFor("phone")}
-            onBlur={() => blur("phone")}
-            onChange={(v) => setFields({ ...fields, phone: v })}
-          />
+          <PhoneField value={fields.phone} error={errorFor("phone")} onBlur={() => blur("phone")} onChange={(phone) => setFields((f) => ({ ...f, phone }))} />
           {serverErrors.form && (
             <p role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm">
               {serverErrors.form}
@@ -121,6 +124,23 @@ function Field({
           error ? "border-danger" : "border-line"
         }`}
       />
+      {error && (
+        <p id={`${id}-error`} className="mt-1.5 text-xs text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PhoneField({ value, error, onBlur, onChange }: { value: string; error?: string; onBlur: () => void; onChange: (value: string) => void }) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-medium">
+        Phone <span className="font-normal text-ink-faint">(optional)</span>
+      </label>
+      <PhoneInput id={id} value={value} onChange={onChange} onBlur={onBlur} invalid={Boolean(error)} describedBy={error ? `${id}-error` : undefined} />
       {error && (
         <p id={`${id}-error`} className="mt-1.5 text-xs text-danger">
           {error}

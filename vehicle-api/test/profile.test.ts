@@ -73,7 +73,7 @@ describe("profile (registration)", () => {
     expect((await saved.json()).profile).toMatchObject({
       fullName: "Wanjiru Kamau",
       email: "wanjiru@example.com",
-      phone: "+254 712 345 678",
+      phone: "+254712345678", // stored in international (E.164) form
     });
 
     const updated = await put({ fullName: "Wanjiru Kamau", email: "w.kamau@example.com", phone: "" }, auth);
@@ -109,5 +109,27 @@ describe("smart-contract wallets", () => {
     // The default plain-wallet check refuses the same signature.
     const refused = await signIn(smartAccount, async () => contractSignature, app());
     expect((await refused.json()).reason).toBe("bad_signature");
+  });
+});
+
+describe("phone numbers", () => {
+  it("accepts any country's number and stores it in international form", async () => {
+    const auth = await tokenFor(privateKeyToAccount(generatePrivateKey()));
+    for (const [typed, stored] of [
+      ["+44 20 7946 0958", "+442079460958"],
+      ["+1 (415) 555-2671", "+14155552671"],
+      ["+255 754 123 456", "+255754123456"],
+    ]) {
+      const res = await put({ fullName: "Test Person", email: "t@example.com", phone: typed }, auth);
+      expect(res.status).toBe(200);
+      expect((await res.json()).profile.phone).toBe(stored);
+    }
+  });
+
+  it("rejects numbers that aren't real for their country, or lack a country code", async () => {
+    const auth = await tokenFor(privateKeyToAccount(generatePrivateKey()));
+    for (const phone of ["+254 12", "0712 345 678", "+999 123 456 789"]) {
+      expect((await put({ fullName: "Test Person", email: "t@example.com", phone }, auth)).status).toBe(400);
+    }
   });
 });
