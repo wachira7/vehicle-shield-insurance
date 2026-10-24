@@ -73,6 +73,12 @@ function findInChain(error: unknown, match: (e: ErrorLike) => boolean): ErrorLik
   return undefined;
 }
 
+/// The underlying error's own short description, for a "technical details" disclosure.
+export function technicalDetails(error: unknown): string {
+  const e = error as ErrorLike & { shortMessage?: string; details?: string };
+  return [e?.name, e?.shortMessage ?? e?.message, e?.details].filter(Boolean).join(" · ").slice(0, 600);
+}
+
 /// Turns wallet and contract errors into plain words.
 export function describeTxError(error: unknown): string {
   if (findInChain(error, (e) => e.name === "UserRejectedRequestError" || e.code === 4001)) {
