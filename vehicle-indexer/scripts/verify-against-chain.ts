@@ -101,6 +101,14 @@ async function main() {
   );
   check("decisions name who made them", decisions.every((d: { actor?: string }) => /^0x[0-9a-f]{40}$/.test(d.actor ?? "")), true);
 
+  // The notification feed carries every claim status change and every policy.
+  const activity = await get("/v1/activity?since=0");
+  const timelineLengths = await Promise.all(
+    Array.from({ length: Number(claimCount) }, async (_, i) => (await get(`/v1/claims/${i + 1}`)).timeline.length),
+  );
+  check("activity claim events", activity.claimEvents.length, timelineLengths.reduce((sum: number, n: number) => sum + n, 0));
+  check("activity policies", activity.policies.length, policyCount);
+
   const stats = await get("/v1/stats");
   check("stats policiesSold", stats.policiesSold, policyCount);
   check("stats claimsSubmitted", stats.claimsSubmitted, claimCount);

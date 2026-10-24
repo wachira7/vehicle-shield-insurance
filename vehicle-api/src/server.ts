@@ -6,6 +6,9 @@ import { openDatabase } from "./db";
 import { onchainAssessorCheck, onchainPolicyReader, rpcSignatureCheck } from "./roles";
 import { filebaseStore, localStore } from "./storage";
 import { databaseVerifier } from "./verification";
+import { africasTalkingSms, logChannels, resendEmail } from "./notifications/channels";
+import { createNotifier } from "./notifications/notifier";
+import { indexerFeed, notificationWorker } from "./notifications/worker";
 
 const config = loadConfig();
 if (config.allowUnverifiedVehicles) {
@@ -22,6 +25,31 @@ if (!config.rpcUrl) {
 const { db } = await openDatabase(config.databaseUrl);
 const store = config.storage.kind === "filebase" ? filebaseStore(config.storage) : localStore(config.storage.dir);
 
+const isAssessor = config.rpcUrl
+  ? onchainAssessorCheck({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
+  : async () => false;
+
+// Email and SMS go out through their providers when configured; otherwise they're logged.
+const { notifications } = config;
+const logged = logChannels();
+const notifier = createNotifier({
+  db,
+  appUrl: notifications.appUrl,
+  isAssessor,
+  channels: {
+    email: notifications.email ? resendEmail(notifications.email) : logged.email,
+    sms: notifications.sms ? africasTalkingSms(notifications.sms) : logged.sms,
+  },
+});
+console.log(
+  `Notifications: email ${notifications.email ? "via Resend" : "logged only"}, SMS ${notifications.sms ? `via Africa's Talking (${notifications.sms.username})` : "logged only"}`,
+);
+if (notifications.indexerUrl) {
+  notificationWorker({ db, notifier, feed: indexerFeed(notifications.indexerUrl) }).start(notifications.pollSeconds * 1000);
+} else {
+  console.warn("INDEXER_URL is not set: claim, policy and renewal notifications are off.");
+}
+
 const app = createApp({
   signer: config.signer,
   deployment: config.deployment,
@@ -33,9 +61,8 @@ const app = createApp({
   store,
   photoKey: config.photoKey,
   verifySignature: config.rpcUrl ? rpcSignatureCheck(config.rpcUrl) : undefined,
-  isAssessor: config.rpcUrl
-    ? onchainAssessorCheck({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
-    : async () => false,
+  isAssessor,
+  notifier,
   readPolicy: config.rpcUrl
     ? onchainPolicyReader({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
     : undefined,

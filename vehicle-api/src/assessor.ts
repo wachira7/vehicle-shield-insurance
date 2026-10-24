@@ -8,6 +8,7 @@ import { z } from "zod";
 import { requireAuth, type AuthEnv } from "./auth";
 import { decryptBlob } from "./crypto";
 import { schema } from "./db";
+import { messages } from "./notifications/messages";
 import { describeVehicle, type PhotoDeps } from "./photos";
 import { photoFlags, summaryFlags, type MatchContext, type PhotoFacts } from "./review";
 import type { PolicyReader, RoleCheck } from "./roles";
@@ -157,6 +158,9 @@ export function assessorRoutes(deps: AssessorDeps) {
       .where(and(eq(schema.vehicles.id, vehicle.id), eq(schema.vehicles.status, "pending")))
       .returning();
     if (!updated) return c.json({ error: "not_pending" }, 409);
+    void deps.notifier
+      ?.notify(updated.owner, `vehicle:${updated.id}:verified:${updated.reviewedAt?.toISOString()}`, messages.vehicleVerified(updated))
+      .catch((error) => console.error("Notifying the owner failed:", error));
     return c.json(await describeVehicle(db, updated));
   });
 
@@ -173,6 +177,13 @@ export function assessorRoutes(deps: AssessorDeps) {
       .set({ status: "rejected", reviewNote: parsed.data.note, reviewedBy: c.get("address"), reviewedAt: deps.now() })
       .where(eq(schema.vehicles.id, vehicle.id))
       .returning();
+    void deps.notifier
+      ?.notify(
+        updated.owner,
+        `vehicle:${updated.id}:sent-back:${updated.reviewedAt?.toISOString()}`,
+        messages.vehicleSentBack({ id: updated.id, plate: updated.plate, note: parsed.data.note }),
+      )
+      .catch((error) => console.error("Notifying the owner failed:", error));
     return c.json(await describeVehicle(db, updated));
   });
 

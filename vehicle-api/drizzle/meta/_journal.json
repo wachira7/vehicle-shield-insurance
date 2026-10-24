@@ -43,6 +43,13 @@
       "when": 1792852310814,
       "tag": "0005_photo_forensics",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792865340363,
+      "tag": "0006_notifications",
+      "breakpoints": true
     }
   ]
 }

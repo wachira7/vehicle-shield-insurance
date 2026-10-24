@@ -29,6 +29,8 @@ const profileRequest = z.object({
         }),
     )
     .optional(),
+  notifyEmail: z.boolean().optional(),
+  notifySms: z.boolean().optional(),
 });
 
 export function profileRoutes({ db, sessionSecret, now }: { db: Database; sessionSecret: string; now: () => Date }) {
@@ -36,7 +38,9 @@ export function profileRoutes({ db, sessionSecret, now }: { db: Database; sessio
   app.use("*", requireAuth(sessionSecret, now));
 
   const describe = (row: typeof schema.profiles.$inferSelect | undefined) =>
-    row ? { fullName: row.fullName, email: row.email, phone: row.phone, updatedAt: row.updatedAt } : null;
+    row
+      ? { fullName: row.fullName, email: row.email, phone: row.phone, notifyEmail: row.notifyEmail, notifySms: row.notifySms, updatedAt: row.updatedAt }
+      : null;
 
   app.get("/", async (c) => {
     const [row] = await db.select().from(schema.profiles).where(eq(schema.profiles.address, c.get("address")));

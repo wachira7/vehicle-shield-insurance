@@ -1,4 +1,4 @@
-import { bigint, doublePrecision, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, doublePrecision, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 /// Single-use Sign-In with Ethereum nonces. A nonce is deleted when it is used.
 export const authNonces = pgTable("auth_nonce", {
@@ -92,6 +92,36 @@ export const profiles = pgTable("profile", {
   fullName: text("full_name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
+  // Which channels may carry notifications, besides the in-app list (always on).
+  notifyEmail: boolean("notify_email").notNull().default(true),
+  notifySms: boolean("notify_sms").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/// One message to one wallet: shown in the app, and sent by email or SMS per the recipient's
+/// profile. `key` makes each event notify once, however often the worker sees it.
+export const notifications = pgTable(
+  "notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recipient: text("recipient").notNull(), // checksummed address
+    key: text("key").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    link: text("link"), // app path, e.g. /dashboard/claims/3
+    email: text("email", { enum: ["sent", "failed", "skipped"] }),
+    sms: text("sms", { enum: ["sent", "failed", "skipped"] }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("notification_recipient_key").on(t.recipient, t.key), index("notification_recipient_idx").on(t.recipient, t.createdAt)],
+);
+
+/// Small persistent values for background jobs, e.g. how far the notification worker has read.
+export const jobState = pgTable("job_state", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

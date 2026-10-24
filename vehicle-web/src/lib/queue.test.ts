@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decisionStats, formatDuration, waitingAge } from "./queue";
+import { decisionStats, formatDuration, timeAgo, waitingAge } from "./queue";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -11,6 +11,11 @@ describe("waitingAge", () => {
     expect(waitingAge(now - 2 * DAY, now)).toEqual({ label: "2 d", tone: "warn" });
     expect(waitingAge(now - 6 * DAY, now)).toEqual({ label: "6 d", tone: "late" });
     expect(waitingAge(now + HOUR, now).label).toBe("just now");
+  });
+
+  it("says how long ago", () => {
+    expect(timeAgo(60_000)).toBe("just now");
+    expect(timeAgo(3 * HOUR)).toBe("3 h ago");
   });
 
   it("formats short durations", () => {

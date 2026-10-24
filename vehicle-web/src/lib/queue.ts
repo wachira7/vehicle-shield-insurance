@@ -17,6 +17,12 @@ export function formatDuration(ms: number): string {
   return `${Math.floor(ms / DAY)} d`;
 }
 
+/// "just now", "20 min ago", "3 d ago"
+export const timeAgo = (ms: number) => {
+  const label = formatDuration(Math.max(0, ms));
+  return label === "just now" ? label : `${label} ago`;
+};
+
 export function waitingAge(since: number, now = Date.now()): { label: string; tone: WaitTone } {
   const waited = Math.max(0, now - since);
   return {

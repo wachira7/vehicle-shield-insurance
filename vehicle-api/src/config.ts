@@ -16,6 +16,13 @@ export interface Config {
   photoKey: Buffer;
   rpcUrl?: string;
   storage: { kind: "filebase"; accessKeyId: string; secretAccessKey: string; bucket: string } | { kind: "local"; dir: string };
+  notifications: {
+    appUrl: string;
+    indexerUrl?: string;
+    pollSeconds: number;
+    email?: { apiKey: string; from: string };
+    sms?: { username: string; apiKey: string; senderId?: string };
+  };
 }
 
 /// Reads configuration from the environment and fails fast on anything missing.
@@ -29,6 +36,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const filebaseSet = filebase.filter((name) => env[name]);
   if (filebaseSet.length > 0 && filebaseSet.length < filebase.length) {
     throw new Error(`Set all of ${filebase.join(", ")} to use Filebase, or none to store photos locally`);
+  }
+
+  for (const group of [["RESEND_API_KEY", "EMAIL_FROM"], ["AT_USERNAME", "AT_API_KEY"]]) {
+    const set = group.filter((name) => env[name]);
+    if (set.length > 0 && set.length < group.length) throw new Error(`Set both ${group.join(" and ")}, or neither`);
   }
 
   let deployment: Deployment;
@@ -60,5 +72,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           bucket: env.FILEBASE_BUCKET!,
         }
       : { kind: "local", dir: env.LOCAL_STORAGE_DIR || "./.data/blobs" },
+    notifications: {
+      appUrl: (env.PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, ""),
+      indexerUrl: env.INDEXER_URL || undefined,
+      pollSeconds: Number(env.NOTIFICATIONS_POLL_SECONDS || 20),
+      email: env.RESEND_API_KEY ? { apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM! } : undefined,
+      sms: env.AT_USERNAME ? { username: env.AT_USERNAME, apiKey: env.AT_API_KEY!, senderId: env.AT_SENDER_ID || undefined } : undefined,
+    },
   };
 }

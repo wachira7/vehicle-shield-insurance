@@ -4,6 +4,7 @@ import { formatPhone } from "@/lib/phone";
 import { useState } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { shortAddress } from "@/components/app-header";
+import { NotificationSettings } from "@/components/notification-settings";
 import { ButtonLink, Card } from "@/components/ui";
 import { useSession } from "@/lib/session";
 
@@ -86,6 +87,8 @@ export function AccountOverview({ staff = false }: { staff?: boolean }) {
           </button>
         </Card>
       </div>
+
+      <NotificationSettings staff={staff} />
     </div>
   );
 }
