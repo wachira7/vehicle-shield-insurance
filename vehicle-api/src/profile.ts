@@ -2,6 +2,7 @@
 // finished registering; the frontend asks for these details before anything else.
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
+import { parsePhoneNumberFromString } from "libphonenumber-js/min";
 import { z } from "zod";
 import { requireAuth, type AuthEnv } from "./auth";
 import { schema, type Database } from "./db";
@@ -9,12 +10,25 @@ import { schema, type Database } from "./db";
 const profileRequest = z.object({
   fullName: z.string().trim().min(2, "Enter your full name").max(80),
   email: z.string().trim().toLowerCase().email("Enter a valid email address").max(120),
+  // Any country's number, in international form; stored as E.164 (e.g. +254712345678).
   phone: z
-    .string()
-    .trim()
-    .regex(/^\+?[0-9][0-9 ()-]{6,19}$/, "Enter a valid phone number, e.g. +254 712 345 678")
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+    .literal("")
+    .transform(() => undefined)
+    .or(
+      z
+        .string()
+        .trim()
+        .max(30)
+        .transform((value, ctx) => {
+          const number = parsePhoneNumberFromString(value);
+          if (!number?.isValid()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid phone number with its country code, e.g. +254 712 345 678" });
+            return z.NEVER;
+          }
+          return number.number;
+        }),
+    )
+    .optional(),
 });
 
 export function profileRoutes({ db, sessionSecret, now }: { db: Database; sessionSecret: string; now: () => Date }) {
