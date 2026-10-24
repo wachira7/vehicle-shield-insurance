@@ -37,6 +37,7 @@ const app = () =>
     siweDomain: "localhost:3000",
     store,
     photoKey: PHOTO_KEY,
+    isAssessor: async () => false,
     now: () => NOW,
   });
 

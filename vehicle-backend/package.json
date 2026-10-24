@@ -15,7 +15,9 @@
     "check:deployment": "hardhat run scripts/check-deployment.ts",
     "e2e:buy": "hardhat run scripts/e2e-buy-policy.ts",
     "grant-role": "hardhat run scripts/grant-role.ts",
-    "seed:scenario": "hardhat run scripts/seed-scenario.ts"
+    "seed:scenario": "hardhat run scripts/seed-scenario.ts",
+    "assess-claim": "hardhat run scripts/assess-claim.ts",
+    "e2e:full": "hardhat run scripts/e2e-full-flow.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.2.0",

@@ -33,6 +33,7 @@ const app = () =>
     siweDomain: DOMAIN,
     store: memoryStore(),
     photoKey: Buffer.alloc(32, 1),
+    isAssessor: async () => false,
     now: () => clock,
   });
 
