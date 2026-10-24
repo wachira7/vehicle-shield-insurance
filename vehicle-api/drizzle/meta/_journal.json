@@ -15,6 +15,13 @@
       "when": 1792694839153,
       "tag": "0001_vehicles_photos_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792835625735,
+      "tag": "0002_claim_evidence_uri_index",
+      "breakpoints": true
     }
   ]
 }

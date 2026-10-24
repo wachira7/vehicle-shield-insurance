@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { loadConfig } from "./config";
 import { openDatabase } from "./db";
+import { onchainAssessorCheck } from "./roles";
 import { filebaseStore, localStore } from "./storage";
 import { databaseVerifier } from "./verification";
 
@@ -12,6 +13,10 @@ if (config.allowUnverifiedVehicles) {
 }
 if (config.storage.kind === "local") {
   console.warn(`Photos are stored on local disk in ${config.storage.dir}. Set the FILEBASE_* variables to use IPFS.`);
+}
+
+if (!config.rpcUrl) {
+  console.warn("RPC_URL is not set: nobody can use the assessor console until it is.");
 }
 
 const { db } = await openDatabase(config.databaseUrl);
@@ -27,6 +32,9 @@ const app = createApp({
   siweDomain: config.siweDomain,
   store,
   photoKey: config.photoKey,
+  isAssessor: config.rpcUrl
+    ? onchainAssessorCheck({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
+    : async () => false,
   corsOrigins: config.corsOrigins,
 });
 

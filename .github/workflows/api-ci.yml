@@ -30,3 +30,47 @@ jobs:
       - run: yarn workspace vehicle-shield-api test
       - name: Boot the API under Node's real module loader
         run: yarn workspace vehicle-shield-api smoke
+
+  full-flow:
+    name: Full flow (local chain)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - name: Start a local chain and deploy
+        working-directory: vehicle-backend
+        run: |
+          yarn hardhat node --port 8545 > /tmp/hardhat.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -X POST -H 'Content-Type: application/json' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' http://127.0.0.1:8545 && break
+            sleep 1
+          done
+          SEED_POOL_USDC=50000 yarn deploy:local
+      - name: Start the API (no testnet bypass, on-chain assessor check)
+        working-directory: vehicle-api
+        env:
+          # Hardhat's well-known local account 0: deployer, quote signer and assessor on the local chain.
+          QUOTE_SIGNER_PRIVATE_KEY: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+          VEHICLE_ID_SALT: ci-salt
+          DEPLOYMENT_FILE: ../packages/protocol/deployments/localhost.json
+          ALLOW_UNVERIFIED_VEHICLES: "false"
+          RPC_URL: http://127.0.0.1:8545
+          DATABASE_URL: "pglite:/tmp/api-db"
+          LOCAL_STORAGE_DIR: /tmp/api-blobs
+        run: |
+          export SESSION_SECRET=$(openssl rand -hex 32) PHOTO_ENCRYPTION_KEY=$(openssl rand -hex 32)
+          yarn start > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/health && exit 0; sleep 1; done
+          cat /tmp/api.log; exit 1
+      - name: Customer and assessor journey
+        working-directory: vehicle-backend
+        run: API_URL=http://127.0.0.1:8787 yarn e2e:full --network localhost
+      - name: API log
+        if: failure()
+        run: cat /tmp/api.log

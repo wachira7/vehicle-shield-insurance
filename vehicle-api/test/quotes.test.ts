@@ -37,6 +37,7 @@ function makeApp(allowVehicles = true) {
     siweDomain: "localhost:3000",
     store: memoryStore(),
     photoKey: Buffer.alloc(32, 1),
+    isAssessor: async () => false,
     corsOrigins: ["http://localhost:3000"],
     now: () => NOW,
   });

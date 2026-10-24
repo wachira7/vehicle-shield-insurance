@@ -37,14 +37,18 @@ export const vehicles = pgTable(
 
 /// The photos behind one claim. Its manifest (CIDs and hashes only, no images or personal
 /// data) is what the claim's on-chain evidence URI points to.
-export const claimEvidence = pgTable("claim_evidence", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  owner: text("owner").notNull(),
-  policyId: bigint("policy_id", { mode: "bigint" }).notNull(),
-  manifestCid: text("manifest_cid").notNull(),
-  uri: text("uri").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const claimEvidence = pgTable(
+  "claim_evidence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    owner: text("owner").notNull(),
+    policyId: bigint("policy_id", { mode: "bigint" }).notNull(),
+    manifestCid: text("manifest_cid").notNull(),
+    uri: text("uri").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("claim_evidence_uri_idx").on(t.uri)],
+);
 
 /// An encrypted photo in storage. `sha256` is of the original image, for integrity checks.
 export const photos = pgTable(

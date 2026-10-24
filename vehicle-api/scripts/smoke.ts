@@ -18,6 +18,7 @@ const app = createApp({
   siweDomain: "localhost:3000",
   store: memoryStore(),
   photoKey: Buffer.alloc(32, 1),
+  isAssessor: async () => false,
 });
 const response = await app.request("/health");
 if (response.status !== 200) throw new Error(`/health returned ${response.status}`);

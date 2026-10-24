@@ -13,7 +13,9 @@ import {
 } from "@vehicle-shield/protocol";
 import { authRoutes } from "./auth";
 import type { Database } from "./db";
+import { assessorRoutes } from "./assessor";
 import { evidenceRoutes, photoRoutes, vehicleRoutes } from "./photos";
+import type { RoleCheck } from "./roles";
 import type { BlobStore } from "./storage";
 import type { VehicleVerifier } from "./verification";
 
@@ -27,6 +29,7 @@ export interface AppOptions {
   siweDomain: string;
   store: BlobStore;
   photoKey: Buffer;
+  isAssessor: RoleCheck;
   corsOrigins?: string[];
   now?: () => Date;
 }
@@ -80,6 +83,7 @@ export function createApp({
   siweDomain,
   store,
   photoKey,
+  isAssessor,
   corsOrigins = [],
   now = () => new Date(),
 }: AppOptions) {
@@ -111,6 +115,7 @@ export function createApp({
   app.route("/v1/vehicles", vehicleRoutes(photoDeps));
   app.route("/v1/claims/evidence", evidenceRoutes(photoDeps));
   app.route("/v1/photos", photoRoutes(photoDeps));
+  app.route("/v1/assessor", assessorRoutes({ ...photoDeps, isAssessor }));
 
   /// Instant price with no wallet: lets people compare cover before connecting.
   app.post("/v1/quotes/estimate", async (c) => {

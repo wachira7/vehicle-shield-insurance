@@ -14,6 +14,7 @@ export interface Config {
   sessionSecret: string;
   siweDomain: string;
   photoKey: Buffer;
+  rpcUrl?: string;
   storage: { kind: "filebase"; accessKeyId: string; secretAccessKey: string; bucket: string } | { kind: "local"; dir: string };
 }
 
@@ -50,6 +51,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sessionSecret: env.SESSION_SECRET!,
     siweDomain: env.SIWE_DOMAIN || "localhost:3000",
     photoKey: parseMasterKey(env.PHOTO_ENCRYPTION_KEY!),
+    rpcUrl: env.RPC_URL || undefined,
     storage: filebaseSet.length
       ? {
           kind: "filebase",

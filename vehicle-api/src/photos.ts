@@ -94,26 +94,28 @@ const tooLarge = bodyLimit({
   onError: (c) => c.json({ error: "too_large", reason: "Photos must be 10 MB or smaller" }, 413),
 });
 
+/// A vehicle as the API returns it: details, its photos, and the views still missing.
+export async function describeVehicle(db: Database, vehicle: typeof schema.vehicles.$inferSelect) {
+  const photos = await db
+    .select({ id: schema.photos.id, view: schema.photos.view, createdAt: schema.photos.createdAt })
+    .from(schema.photos)
+    .where(eq(schema.photos.vehicleSubmissionId, vehicle.id))
+    .orderBy(asc(schema.photos.createdAt));
+  const uploaded = new Set(photos.map((photo) => photo.view));
+  const { marketValue, ...rest } = vehicle;
+  return {
+    ...rest,
+    marketValueUsdc: formatUnits(marketValue, 6),
+    photos,
+    missingViews: PHOTO_VIEWS.filter((view) => !uploaded.has(view)),
+  };
+}
+
 export function vehicleRoutes(deps: PhotoDeps) {
   const { db } = deps;
   const app = new Hono<AuthEnv>();
   app.use("*", requireAuth(deps.sessionSecret, deps.now));
-
-  async function describe(vehicle: typeof schema.vehicles.$inferSelect) {
-    const photos = await db
-      .select({ id: schema.photos.id, view: schema.photos.view, createdAt: schema.photos.createdAt })
-      .from(schema.photos)
-      .where(eq(schema.photos.vehicleSubmissionId, vehicle.id))
-      .orderBy(asc(schema.photos.createdAt));
-    const uploaded = new Set(photos.map((photo) => photo.view));
-    const { marketValue, ...rest } = vehicle;
-    return {
-      ...rest,
-      marketValueUsdc: formatUnits(marketValue, 6),
-      photos,
-      missingViews: PHOTO_VIEWS.filter((view) => !uploaded.has(view)),
-    };
-  }
+  const describe = (vehicle: typeof schema.vehicles.$inferSelect) => describeVehicle(db, vehicle);
 
   async function ownVehicle(id: string, owner: string) {
     if (!z.string().uuid().safeParse(id).success) return undefined;

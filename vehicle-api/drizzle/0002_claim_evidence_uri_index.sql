@@ -1,0 +1,1 @@
+CREATE INDEX "claim_evidence_uri_idx" ON "claim_evidence" USING btree ("uri");
