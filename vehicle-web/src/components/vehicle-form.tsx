@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import type { VehicleInputFull } from "@/lib/api";
+import { useFieldErrors } from "@/lib/form";
 import { Button } from "./ui";
 
 export type VehicleFormValues = {
@@ -58,7 +59,6 @@ export function VehicleForm({
   onSubmit: (values: VehicleFormValues) => void;
 }) {
   const [values, setValues] = useState(initial);
-  const [touched, setTouched] = useState(false);
   const set = <K extends keyof VehicleFormValues>(key: K, value: VehicleFormValues[K]) => setValues((v) => ({ ...v, [key]: value }));
   const year = Number(values.year);
   const errors: Partial<Record<keyof VehicleFormValues, string>> = {
@@ -70,22 +70,22 @@ export function VehicleForm({
     ...(values.mileageKm === "" && { mileageKm: "Enter the mileage" }),
   };
 
+  const { shown, blur, attemptSubmit } = useFieldErrors(errors);
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    setTouched(true);
-    if (Object.keys(errors).length === 0) onSubmit(values);
+    if (attemptSubmit()) onSubmit(values);
   };
-  const shown = (key: keyof VehicleFormValues) => (touched ? errors[key] : undefined);
 
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Input label="Number plate" value={values.plate} error={shown("plate")} onChange={(v) => set("plate", v.toUpperCase())} placeholder="KDA 123A" autoCapitalize="characters" />
-        <Input label="Make" value={values.make} error={shown("make")} onChange={(v) => set("make", v)} placeholder="Toyota" />
-        <Input label="Model" value={values.model} error={shown("model")} onChange={(v) => set("model", v)} placeholder="Axio" />
-        <Input label="Model year" inputMode="numeric" value={values.year} error={shown("year")} onChange={(v) => set("year", digits(v).slice(0, 4))} />
-        <Input label="What it's worth ($)" inputMode="numeric" value={values.marketValue} error={shown("marketValue")} onChange={(v) => set("marketValue", digits(v).slice(0, 7))} />
-        <Input label="Mileage (km)" inputMode="numeric" value={values.mileageKm} error={shown("mileageKm")} onChange={(v) => set("mileageKm", digits(v).slice(0, 7))} />
+        <Input label="Number plate" value={values.plate} error={shown("plate")} onBlur={() => blur("plate")} onChange={(v) => set("plate", v.toUpperCase())} placeholder="KDA 123A" autoCapitalize="characters" />
+        <Input label="Make" value={values.make} error={shown("make")} onBlur={() => blur("make")} onChange={(v) => set("make", v)} placeholder="Toyota" />
+        <Input label="Model" value={values.model} error={shown("model")} onBlur={() => blur("model")} onChange={(v) => set("model", v)} placeholder="Axio" />
+        <Input label="Model year" inputMode="numeric" value={values.year} error={shown("year")} onBlur={() => blur("year")} onChange={(v) => set("year", digits(v).slice(0, 4))} />
+        <Input label="What it's worth ($)" inputMode="numeric" value={values.marketValue} error={shown("marketValue")} onBlur={() => blur("marketValue")} onChange={(v) => set("marketValue", digits(v).slice(0, 7))} />
+        <Input label="Mileage (km)" inputMode="numeric" value={values.mileageKm} error={shown("mileageKm")} onBlur={() => blur("mileageKm")} onChange={(v) => set("mileageKm", digits(v).slice(0, 7))} />
       </div>
       <div>
         <div className="flex items-baseline justify-between">
