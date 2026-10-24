@@ -1,32 +1,41 @@
 "use client";
 
-// Small, dependency-free motion: content fades up as it scrolls into view, and numbers count
-// up once. Both respect prefers-reduced-motion, and content stays visible without JavaScript
-// (the hidden starting state only applies once the `js` class is on <html>).
-import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
+// Small, dependency-free motion: content fades in as it scrolls onto the screen and out as it
+// leaves (in either direction), and numbers count up once. Both respect prefers-reduced-motion,
+// and content stays visible without JavaScript (the hidden state needs the `js` class on <html>).
+import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from "react";
 import { formatUsd } from "@/lib/format";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Trigger slightly before an element is fully in view; shared so the effect runs once.
-const IN_VIEW: IntersectionObserverInit = { rootMargin: "0px 0px -10% 0px" };
+// Shown once a fifth of the element is on screen (inside a band that trims 8% off the top and
+// bottom edges), hidden again when it drops below that while scrolling away.
+const VISIBLE_RATIO = 0.2;
+const OBSERVER: IntersectionObserverInit = { rootMargin: "-8% 0px -8% 0px", threshold: [0, VISIBLE_RATIO] };
 
-function useInView<T extends Element>(options: IntersectionObserverInit = IN_VIEW) {
+/// `once`: stay visible after the first appearance (used for counters).
+function useInView<T extends Element>({ once = false } = {}) {
   const ref = useRef<T>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
+      // Tall elements may never reach the ratio, so also count them once they fill the band.
+      const visible =
+        entry.isIntersecting &&
+        (entry.intersectionRatio >= VISIBLE_RATIO || entry.intersectionRect.height >= (entry.rootBounds?.height ?? Infinity) * 0.5);
+      if (visible) {
         setInView(true);
-        observer.disconnect();
+        if (once) observer.disconnect();
+      } else if (!once) {
+        setInView(false);
       }
-    }, options);
+    }, OBSERVER);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [options]);
+  }, [once]);
   return [ref, inView] as const;
 }
 
@@ -46,7 +55,7 @@ export function Reveal({
     <Tag
       ref={ref}
       data-shown={inView || undefined}
-      style={{ transitionDelay: `${delay}ms` }}
+      style={{ "--reveal-delay": `${delay}ms` } as CSSProperties}
       className={`reveal ${className}`}
     >
       {children}
@@ -71,7 +80,7 @@ export function CountUp({
   durationMs?: number;
 }) {
   const format = FORMATS[formatName];
-  const [ref, inView] = useInView<HTMLSpanElement>();
+  const [ref, inView] = useInView<HTMLSpanElement>({ once: true });
   const [shown, setShown] = useState(0);
 
   useEffect(() => {

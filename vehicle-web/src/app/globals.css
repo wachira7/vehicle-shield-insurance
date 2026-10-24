@@ -38,17 +38,39 @@ html {
   }
 }
 
-/* Scroll reveal: hidden only when JavaScript is running, so content never disappears. */
+/* Scroll reveal, both directions: fades in on entering the screen and out on leaving.
+   Hidden only when JavaScript is running, so content never disappears. Leaving is quicker
+   than arriving, and the stagger delay only applies on the way in. */
 .js .reveal {
   opacity: 0;
   transform: translateY(16px);
   transition:
-    opacity 700ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    opacity 350ms ease-out,
+    transform 350ms ease-out;
 }
 .js .reveal[data-shown] {
   opacity: 1;
   transform: none;
+  transition:
+    opacity 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+/* Hero hand-off: as the page scrolls down, hero content fades and drifts up.
+   Native scroll-driven animation, so no JavaScript; unsupported browsers stay static. */
+@supports (animation-timeline: scroll()) {
+  @keyframes hero-exit {
+    to {
+      opacity: 0;
+      transform: translateY(-48px) scale(0.98);
+    }
+  }
+  .hero-exit {
+    animation: hero-exit linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 70vh;
+  }
 }
 
 @keyframes float {
@@ -69,7 +91,8 @@ html {
     opacity: 1;
     transform: none;
   }
-  .animate-float {
+  .animate-float,
+  .hero-exit {
     animation: none;
   }
 }
