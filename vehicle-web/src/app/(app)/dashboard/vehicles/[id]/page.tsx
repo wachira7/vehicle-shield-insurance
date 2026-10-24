@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PhotoCapture } from "@/components/photo-capture";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/components/toast";
-import { Card } from "@/components/ui";
+import { ButtonLink, Card } from "@/components/ui";
 import { VehicleForm, toVehicleInput, type VehicleFormValues } from "@/components/vehicle-form";
 import { submitVehicle } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
@@ -72,9 +72,12 @@ export default function VehiclePage({ params }: { params: Promise<{ id: string }
         <Card className="border-action/30">
           <p className="font-semibold">Verified</p>
           <p className="mt-1 text-sm text-ink-muted">
-            {vehicle.reviewNote ? `Assessor's note: ${vehicle.reviewNote}. ` : ""}Your quotes for this car use these
-            confirmed details. Buying cover opens in the next update.
+            {vehicle.reviewNote ? `Assessor's note: ${vehicle.reviewNote}. ` : ""}Your price uses these confirmed
+            details.
           </p>
+          <ButtonLink href={`/dashboard/vehicles/${vehicle.id}/buy`} className="mt-4">
+            Buy cover
+          </ButtonLink>
         </Card>
       )}
 

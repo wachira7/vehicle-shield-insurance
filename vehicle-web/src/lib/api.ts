@@ -239,3 +239,27 @@ export async function listPolicies(holder: string): Promise<PolicySummary[] | nu
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Signed quotes
+// ---------------------------------------------------------------------------
+
+export interface SignedQuote {
+  quote: {
+    buyer: `0x${string}`;
+    vehicleId: `0x${string}`;
+    coverage: string;
+    premium: string;
+    deductible: string;
+    duration: string;
+    deadline: string;
+    nonce: `0x${string}`;
+  };
+  signature: `0x${string}`;
+  expiresAt: string;
+  premiumUsdc: string;
+  pricedFrom: "verified_vehicle" | "request";
+}
+
+export const requestSignedQuote = (body: EstimateInput & { buyer: string; plate: string }) =>
+  request<SignedQuote>("/v1/quotes", { method: "POST", body: JSON.stringify(body) });

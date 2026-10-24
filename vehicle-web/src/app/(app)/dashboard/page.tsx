@@ -125,7 +125,8 @@ function NextStepCard({ step }: { step: NextStep }) {
     },
     "buy-cover": {
       title: "Your car is verified",
-      body: "You can now buy cover at a price based on the details the assessor confirmed. Buying opens in the next update.",
+      body: "You can now buy cover, priced from the details the assessor confirmed.",
+      action: step.kind === "buy-cover" ? { href: `/dashboard/vehicles/${step.vehicle.id}/buy`, label: "Buy cover" } : undefined,
     },
     covered: {
       title: "You're covered",
