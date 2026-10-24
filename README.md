@@ -1,1 +1,75 @@
-# vehicle-shield-insurance
+# VehicleShield
+
+Car insurance on Ethereum. Owners verify their car with photos, buy cover with USDC against a
+signed price, file claims with encrypted photo evidence, and collect payouts from the contract.
+Anyone can check a car's cover live on-chain.
+
+Running on the **Sepolia test network** with test USDC. Live app: https://vsi-app.vercel.app
+
+## How it fits together
+
+```
+vehicle-web (Next.js) ──► vehicle-api (Hono)  ──► Postgres, Filebase (encrypted photos)
+      │                        │ signs quotes (EIP-712), checks roles on-chain
+      │                        ▼
+      ├──────────────► InsuranceCore + PolicyNFT (Solidity, Sepolia)
+      │                        ▲
+      └──► vehicle-indexer (Ponder) reads the contract's events
+```
+
+| Folder | What it is |
+|---|---|
+| `vehicle-backend/` | Contracts (`InsuranceCore`, `PolicyNFT`, `MockUSDC`), Hardhat tests, deploy and admin scripts |
+| `packages/protocol/` | Shared ABIs, deployment addresses, pricing and quote signing |
+| `vehicle-api/` | Quotes, Sign-In with Ethereum, vehicles and photos, claim evidence, assessor console API, public cover check |
+| `vehicle-indexer/` | Policies, claims and pool totals from on-chain events, served as REST and GraphQL |
+| `vehicle-web/` | The app: quotes, sign-in (Google, email or wallet), dashboard, buy, claims, assessor console, proof of cover |
+
+## Run it locally
+
+Needs Node 20+ and Yarn 1. Python tools (Slither) run with `uvx`.
+
+```bash
+yarn install
+
+# Contracts
+yarn workspace vehicle-shield-contracts test
+
+# API: copy vehicle-api/.env.example to .env and fill it in (comments explain each value)
+yarn workspace vehicle-shield-api dev            # http://localhost:8787
+
+# Indexer against Sepolia
+INDEXER_NETWORK=sepolia INDEXER_RPC_URL=<sepolia rpc> yarn workspace vehicle-shield-indexer dev   # http://localhost:42069
+
+# Web: NEXT_PUBLIC_REOWN_PROJECT_ID in vehicle-web/.env.local
+yarn workspace vehicle-shield-web dev            # http://localhost:3000
+```
+
+Web settings (all optional except the Reown id): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_INDEXER_URL`,
+`NEXT_PUBLIC_REOWN_PROJECT_ID`, `NEXT_PUBLIC_SEPOLIA_RPC_URL`, `NEXT_PUBLIC_SITE_URL` (used in
+proof-of-cover QR codes).
+
+## Roles
+
+`InsuranceCore` uses OpenZeppelin access control. Grant roles with
+`ROLE=ASSESSOR_ROLE ACCOUNT=0x… yarn workspace vehicle-shield-contracts grant-role --network sepolia`.
+
+| Role | Can |
+|---|---|
+| `QUOTE_SIGNER_ROLE` | Sign prices that buyers pay against (held by the API's key) |
+| `ASSESSOR_ROLE` | Review, approve and decline claims; use the assessor console |
+| `TREASURER_ROLE` | Withdraw free funds from the pool |
+| `PAUSER_ROLE` | Pause buying and payouts in an emergency |
+
+## CI and deploys
+
+Every pull request runs contract tests and coverage, Slither, API and indexer tests, local-chain
+end-to-end flows, and the web type-check, tests and build. `main` is protected; changes land
+through pull requests. Sepolia deploys are manual and need approval (`contracts-deploy-sepolia`).
+
+## Before going live
+
+- Independent contract audit; move admin roles to a multisig; revoke the deployer's roles.
+- A real stablecoin on the chosen network, and an insurance licence (IRA in Kenya).
+- Hosted API, indexer and Postgres, with monitoring and backups. Back up `PHOTO_ENCRYPTION_KEY`
+  and `VEHICLE_ID_SALT`: losing either can't be undone.

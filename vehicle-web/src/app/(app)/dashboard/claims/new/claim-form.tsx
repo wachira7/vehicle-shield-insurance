@@ -13,6 +13,7 @@ import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
 import { uploadClaimEvidence, type EvidencePhoto } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, insuranceCore, technicalDetails } from "@/lib/contracts";
+import { useFieldErrors } from "@/lib/form";
 import { formatUsd, formatUsdcUnits } from "@/lib/format";
 import { prepareImage, readCaptureMetadata } from "@/lib/images";
 import { usePolicies } from "@/lib/queries";
@@ -45,7 +46,6 @@ export function ClaimForm() {
   const [overview, setOverview] = useState<Picked | null>(null);
   const [photos, setPhotos] = useState<Picked[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: "editing" });
-  const [touched, setTouched] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const overviewInput = useRef<HTMLInputElement>(null);
   // The last upload, so a retry after a wallet problem doesn't upload the same photos again.
@@ -74,6 +74,7 @@ export function ClaimForm() {
     overview: !overview ? "Add a photo of the whole car with the number plate readable" : undefined,
     photos: photos.length === 0 ? "Add at least one close-up of the damage" : undefined,
   };
+  const { shown, blur, attemptSubmit, submitted } = useFieldErrors(errors);
   const busy = ["uploading", "wallet", "confirming"].includes(phase.kind);
 
   const addFiles = (files: FileList | null) => {
@@ -83,8 +84,7 @@ export function ClaimForm() {
   };
 
   const submit = async () => {
-    setTouched(true);
-    if (!policyId || !overview || errors.amount || errors.overview || errors.photos || !wallet.ready) return;
+    if (!attemptSubmit() || !policyId || !overview || !wallet.ready) return;
     try {
       const picked = [{ ...overview, view: "overview" as const }, ...photos.map((photo) => ({ ...photo, view: "damage" as const }))];
       const key = JSON.stringify([policyId, description, picked.map((photo) => photo.preview)]);
@@ -171,7 +171,7 @@ export function ClaimForm() {
               Amount you&apos;re claiming
             </label>
             <div
-              className={`mt-2 flex items-center rounded-xl border bg-bg px-3 focus-within:border-action ${touched && errors.amount ? "border-danger" : "border-line"}`}
+              className={`mt-2 flex items-center rounded-xl border bg-bg px-3 focus-within:border-action ${shown("amount") ? "border-danger" : "border-line"}`}
             >
               <span className="text-ink-faint">$</span>
               <input
@@ -180,11 +180,13 @@ export function ClaimForm() {
                 value={amount}
                 disabled={busy}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, "").slice(0, 7))}
+                onBlur={() => blur("amount")}
+                aria-invalid={Boolean(shown("amount"))}
                 className="w-full bg-transparent px-2 py-3 tabular-nums outline-none"
               />
             </div>
-            {touched && errors.amount ? (
-              <p className="mt-1.5 text-xs text-danger">{errors.amount}</p>
+            {shown("amount") ? (
+              <p className="mt-1.5 text-xs text-danger">{shown("amount")}</p>
             ) : (
               <p className="mt-1.5 text-xs text-ink-faint">
                 {remaining.data !== undefined ? `${formatUsdcUnits(remaining.data, { whole: true })} of cover left` : "Checking your cover…"}
@@ -234,7 +236,8 @@ export function ClaimForm() {
                 type="button"
                 disabled={busy}
                 onClick={() => overviewInput.current?.click()}
-                className={`grid aspect-[4/3] w-44 place-items-center rounded-xl border border-dashed text-center text-xs text-ink-faint hover:border-action ${touched && errors.overview ? "border-danger" : "border-line"}`}
+                aria-invalid={submitted && Boolean(errors.overview)}
+                className={`grid aspect-[4/3] w-44 place-items-center rounded-xl border border-dashed text-center text-xs text-ink-faint hover:border-action ${submitted && errors.overview ? "border-danger" : "border-line"}`}
               >
                 <span>
                   <svg viewBox="0 0 24 24" className="mx-auto size-7" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
@@ -246,7 +249,7 @@ export function ClaimForm() {
               </button>
             )}
           </div>
-          {touched && errors.overview && <p className="mt-1.5 text-xs text-danger">{errors.overview}</p>}
+          {submitted && errors.overview && <p className="mt-1.5 text-xs text-danger">{errors.overview}</p>}
           <input
             ref={overviewInput}
             type="file"
@@ -287,7 +290,8 @@ export function ClaimForm() {
                 <button
                   type="button"
                   onClick={() => input.current?.click()}
-                  className={`grid aspect-square w-full place-items-center rounded-xl border border-dashed text-center text-xs text-ink-faint hover:border-action ${touched && errors.photos ? "border-danger" : "border-line"}`}
+                  aria-invalid={submitted && Boolean(errors.photos)}
+                  className={`grid aspect-square w-full place-items-center rounded-xl border border-dashed text-center text-xs text-ink-faint hover:border-action ${submitted && errors.photos ? "border-danger" : "border-line"}`}
                 >
                   <span>
                     <span className="block text-2xl">+</span>
@@ -297,7 +301,7 @@ export function ClaimForm() {
               </li>
             )}
           </ul>
-          {touched && errors.photos && <p className="mt-1.5 text-xs text-danger">{errors.photos}</p>}
+          {submitted && errors.photos && <p className="mt-1.5 text-xs text-danger">{errors.photos}</p>}
           <input
             ref={input}
             type="file"

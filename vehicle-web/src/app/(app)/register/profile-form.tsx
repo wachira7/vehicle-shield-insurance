@@ -6,6 +6,7 @@ import { useAppKitAccount } from "@reown/appkit/react";
 import { Steps } from "@/components/steps";
 import { Button, Card } from "@/components/ui";
 import { ApiError, saveProfile } from "@/lib/api";
+import { useFieldErrors } from "@/lib/form";
 import { safeNext } from "@/lib/redirect";
 import { useSession } from "@/lib/session";
 
@@ -17,7 +18,8 @@ export function ProfileForm() {
   const { token, profile, setProfile } = useSession();
   const { embeddedWalletInfo } = useAppKitAccount();
   const [fields, setFields] = useState<Fields>({ fullName: "", email: "", phone: "" });
-  const [errors, setErrors] = useState<Partial<Fields> & { form?: string }>({});
+  // From the server, for anything it rejects that the checks below don't catch.
+  const [serverErrors, setServerErrors] = useState<Partial<Fields> & { form?: string }>({});
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const isNew = profile === null;
 
@@ -27,11 +29,20 @@ export function ProfileForm() {
     else if (embeddedWalletInfo?.user?.email) setFields((f) => ({ ...f, email: f.email || embeddedWalletInfo.user!.email! }));
   }, [profile, embeddedWalletInfo]);
 
+  // The same rules the API applies (vehicle-api/src/profile.ts), checked as you go.
+  const checks: Partial<Fields> = {
+    ...(fields.fullName.trim().length < 2 && { fullName: "Enter your full name" }),
+    ...(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(fields.email.trim()) && { email: "Enter an email like name@example.com" }),
+    ...(fields.phone.trim() && !/^\+?[0-9][0-9 ()-]{6,19}$/.test(fields.phone.trim()) && { phone: "Enter a phone number like +254 712 345 678" }),
+  };
+  const { shown, blur, attemptSubmit } = useFieldErrors(checks);
+  const errorFor = (key: keyof Fields) => shown(key) ?? serverErrors[key];
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!token) return;
+    if (!token || !attemptSubmit()) return;
     setState("saving");
-    setErrors({});
+    setServerErrors({});
     try {
       const { profile: saved } = await saveProfile(token, {
         fullName: fields.fullName,
@@ -44,9 +55,9 @@ export function ProfileForm() {
       setTimeout(() => router.replace(next), 600);
     } catch (error) {
       if (error instanceof ApiError && error.status === 400 && error.body.fields) {
-        setErrors(error.body.fields as Partial<Fields>);
+        setServerErrors(error.body.fields as Partial<Fields>);
       } else {
-        setErrors({ form: "We couldn't save your details. Check your connection and try again." });
+        setServerErrors({ form: "We couldn't save your details. Check your connection and try again." });
       }
       setState("idle");
     }
@@ -62,20 +73,21 @@ export function ProfileForm() {
           blockchain.
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
-          <Field label="Full name" autoComplete="name" value={fields.fullName} error={errors.fullName} onChange={(v) => setFields({ ...fields, fullName: v })} />
-          <Field label="Email" type="email" autoComplete="email" value={fields.email} error={errors.email} onChange={(v) => setFields({ ...fields, email: v })} />
+          <Field label="Full name" autoComplete="name" value={fields.fullName} error={errorFor("fullName")} onBlur={() => blur("fullName")} onChange={(v) => setFields({ ...fields, fullName: v })} />
+          <Field label="Email" type="email" autoComplete="email" value={fields.email} error={errorFor("email")} onBlur={() => blur("email")} onChange={(v) => setFields({ ...fields, email: v })} />
           <Field
             label="Phone (optional)"
             type="tel"
             autoComplete="tel"
             placeholder="+254 712 345 678"
             value={fields.phone}
-            error={errors.phone}
+            error={errorFor("phone")}
+            onBlur={() => blur("phone")}
             onChange={(v) => setFields({ ...fields, phone: v })}
           />
-          {errors.form && (
+          {serverErrors.form && (
             <p role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm">
-              {errors.form}
+              {serverErrors.form}
             </p>
           )}
           <Button type="submit" className="w-full" disabled={state !== "idle"}>
