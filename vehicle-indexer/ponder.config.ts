@@ -17,7 +17,11 @@ const rpc = process.env.INDEXER_RPC_URL ?? (isLocal ? "http://127.0.0.1:8545" : 
 if (!rpc) throw new Error("Set INDEXER_RPC_URL to an RPC endpoint for " + network);
 
 export default createConfig({
-  database: { kind: "pglite", directory: `.ponder/pglite-${network}` },
+  // Hosted: Postgres from DATABASE_URL (each deploy indexes into its own schema, chosen with
+  // --schema). Locally: embedded PGlite on disk.
+  database: process.env.DATABASE_URL
+    ? { kind: "postgres", connectionString: process.env.DATABASE_URL }
+    : { kind: "pglite", directory: `.ponder/pglite-${network}` },
   chains: {
     // A local node restarts from scratch, so its cached RPC responses would be stale.
     [network]: { id: deployment.chainId, rpc, disableCache: isLocal },

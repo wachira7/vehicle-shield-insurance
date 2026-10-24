@@ -1,0 +1,79 @@
+# Render blueprint: the API and the indexer, in Frankfurt next to the Neon database.
+# Render → New → Blueprint → this repository. Values marked `sync: false` are secrets: Render
+# asks for them when the blueprint is first applied, and they're never stored in git.
+# Free instances sleep after 15 minutes without requests and wake on the next one (~30–60 s).
+
+services:
+  - type: web
+    name: vehicleshield-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: yarn install --frozen-lockfile
+    startCommand: yarn workspace vehicle-shield-api start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DEPLOYMENT_NETWORK
+        value: sepolia
+      # The web app's address: sign-in messages name it, browsers call from it, emails link to it.
+      - key: SIWE_DOMAIN
+        value: vsi-app.vercel.app
+      - key: CORS_ORIGINS
+        value: https://vsi-app.vercel.app
+      - key: PUBLIC_APP_URL
+        value: https://vsi-app.vercel.app
+      # The indexer below; check its address on Render once it's created and adjust if needed.
+      - key: INDEXER_URL
+        value: https://vehicleshield-indexer.onrender.com
+      - key: DATABASE_URL # Neon connection string
+        sync: false
+      - key: QUOTE_SIGNER_PRIVATE_KEY
+        sync: false
+      - key: VEHICLE_ID_SALT
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: PHOTO_ENCRYPTION_KEY
+        sync: false
+      - key: FILEBASE_ACCESS_KEY
+        sync: false
+      - key: FILEBASE_SECRET_KEY
+        sync: false
+      - key: FILEBASE_BUCKET
+        sync: false
+      - key: RPC_URL # Sepolia RPC endpoint
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: AT_USERNAME
+        sync: false
+      - key: AT_API_KEY
+        sync: false
+
+  - type: web
+    name: vehicleshield-indexer
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: yarn install --frozen-lockfile
+    # Each deploy indexes into a fresh schema named after its commit, as Ponder requires when
+    # the indexing code changes; re-indexing this contract's history takes a few minutes.
+    startCommand: yarn workspace vehicle-shield-indexer start --port $PORT --schema idx_$(echo $RENDER_GIT_COMMIT | cut -c1-12)
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: INDEXER_NETWORK
+        value: sepolia
+      - key: CORS_ORIGINS
+        value: https://vsi-app.vercel.app
+      - key: DATABASE_URL # the same Neon connection string as the API
+        sync: false
+      - key: INDEXER_RPC_URL # Sepolia RPC endpoint
+        sync: false

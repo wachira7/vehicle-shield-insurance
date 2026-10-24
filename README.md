@@ -72,6 +72,11 @@ Every pull request runs contract tests and coverage, Slither, API and indexer te
 end-to-end flows, and the web type-check, tests and build. `main` is protected; changes land
 through pull requests. Sepolia deploys are manual and need approval (`contracts-deploy-sepolia`).
 
+## Hosting
+
+The API and indexer run on Render and the database on Neon, both on free tiers in Frankfurt;
+see [docs/hosting.md](docs/hosting.md) and `render.yaml`.
+
 ## Before going live
 
 - Independent contract audit; move admin roles to a multisig; revoke the deployer's roles.
