@@ -11,6 +11,8 @@ import { customersOnly, requireAuth, type AuthEnv } from "./auth";
 import { decryptBlob, encryptBlob } from "./crypto";
 import { schema, type Database } from "./db";
 import { inspectImage, type CaptureMetadata } from "./forensics";
+import { messages } from "./notifications/messages";
+import type { Notifier } from "./notifications/notifier";
 import type { BlobStore } from "./storage";
 
 export const PHOTO_VIEWS = ["front", "back", "left", "right", "interior", "odometer"] as const;
@@ -22,6 +24,7 @@ export const EVIDENCE_VIEWS = ["overview", "damage"] as const;
 export interface PhotoDeps {
   /// Whether an address is staff (an assessor); staff can't submit vehicles or claim evidence.
   isStaff?: (address: `0x${string}`) => Promise<boolean>;
+  notifier?: Notifier;
   db: Database;
   store: BlobStore;
   photoKey: Buffer;
@@ -219,13 +222,21 @@ export function vehicleRoutes(deps: PhotoDeps) {
       { owner, purpose: "vehicle", view: view.data, vehicleSubmissionId: vehicle.id },
       parseReportedMetadata(body.meta),
     );
+    const wasMissing = (await describe(vehicle)).missingViews.includes(view.data);
     await db.transaction(async (tx) => {
       await tx
         .delete(schema.photos)
         .where(and(eq(schema.photos.vehicleSubmissionId, vehicle.id), eq(schema.photos.view, view.data)));
       await tx.insert(schema.photos).values(row);
     });
-    return c.json({ photoId: row.id, view: view.data, cid: row.cid, vehicle: await describe(vehicle) }, 201);
+    const described = await describe(vehicle);
+    // This upload completed the set: tell the assessors it's ready.
+    if (wasMissing && described.missingViews.length === 0) {
+      void deps.notifier
+        ?.notifyAssessors(`vehicle-ready:${vehicle.id}:${row.id}`, messages.vehicleReady(vehicle))
+        .catch((error) => console.error("Notifying assessors failed:", error));
+    }
+    return c.json({ photoId: row.id, view: view.data, cid: row.cid, vehicle: described }, 201);
   });
 
   return app;

@@ -133,11 +133,16 @@ export interface Profile {
   fullName: string;
   email: string;
   phone: string | null;
+  notifyEmail?: boolean;
+  notifySms?: boolean;
 }
 
 export const getProfile = (token: string) => request<{ address: string; profile: Profile | null }>("/v1/profile", { token });
 
-export const saveProfile = (token: string, profile: { fullName: string; email: string; phone?: string }) =>
+export const saveProfile = (
+  token: string,
+  profile: { fullName: string; email: string; phone?: string; notifyEmail?: boolean; notifySms?: boolean },
+) =>
   request<{ address: string; profile: Profile }>("/v1/profile", { method: "PUT", token, body: JSON.stringify(profile) });
 
 // ---------------------------------------------------------------------------
@@ -494,3 +499,24 @@ export async function listDecisions(actor?: string): Promise<DecisionRecord[]> {
 
 export const listMyVehicleDecisions = (token: string, status: "verified" | "rejected") =>
   request<{ vehicles: AssessorVehicle[] }>(`/v1/assessor/vehicles?status=${status}&mine=1`, { token });
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export interface AppNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  link: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export const listNotifications = (token: string) =>
+  request<{ notifications: AppNotification[]; unread: number }>("/v1/notifications", { token });
+
+/// Marks the given notifications read, or all of them.
+export const markNotificationsRead = (token: string, ids?: string[]) =>
+  request<{ ok: true }>("/v1/notifications/read", { method: "POST", token, body: JSON.stringify(ids ? { ids } : {}) });

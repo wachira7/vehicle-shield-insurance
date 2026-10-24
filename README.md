@@ -45,6 +45,11 @@ INDEXER_NETWORK=sepolia INDEXER_RPC_URL=<sepolia rpc> yarn workspace vehicle-shi
 yarn workspace vehicle-shield-web dev            # http://localhost:3000
 ```
 
+Notifications (in-app, email via Resend, SMS via Africa's Talking) are configured in
+`vehicle-api/.env`; see `.env.example`. Without provider keys, emails and texts are logged
+instead of sent, and with `INDEXER_URL` set the API follows the chain for claim, policy and
+renewal events.
+
 Web settings (all optional except the Reown id): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_INDEXER_URL`,
 `NEXT_PUBLIC_REOWN_PROJECT_ID`, `NEXT_PUBLIC_SEPOLIA_RPC_URL`, `NEXT_PUBLIC_SITE_URL` (used in
 proof-of-cover QR codes).

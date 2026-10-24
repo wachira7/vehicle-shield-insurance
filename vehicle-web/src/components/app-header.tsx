@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useIsAssessor } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { Logo } from "./logo";
+import { NotificationBell } from "./notification-bell";
 import { ButtonLink } from "./ui";
 
 export function AppHeader() {
@@ -13,7 +14,10 @@ export function AppHeader() {
     <header className="sticky top-0 z-20 border-b border-line/60 bg-bg/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Logo />
-        <AccountMenu />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <AccountMenu />
+        </div>
       </div>
     </header>
   );

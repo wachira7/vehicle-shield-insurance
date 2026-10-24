@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { and, client, desc, asc, eq, graphql, inArray, replaceBigInts } from "ponder";
+import { and, client, desc, asc, eq, graphql, gte, inArray, lt, or, replaceBigInts } from "ponder";
 import { db } from "ponder:api";
 import schema, { claim, claimEvent, policy, poolStats } from "ponder:schema";
 import { isAddress, isHex } from "viem";
@@ -21,12 +21,16 @@ type PolicyRow = typeof policy.$inferSelect;
 const withStatus = (row: PolicyRow) => ({ ...row, status: policyStatus(row, nowSeconds()) });
 
 /// Policies, newest first: held by `?holder=`, covering `?vehicleId=` (the on-chain vehicle
-/// hash), or the latest policies when neither is given.
+/// hash), not cancelled and ending in `[endAfter, endBefore)` (unix seconds; for renewal
+/// reminders), or the latest policies when none is given.
 app.get("/v1/policies", async (c) => {
   const holder = c.req.query("holder");
   const vehicleId = c.req.query("vehicleId");
+  const endAfter = c.req.query("endAfter");
+  const endBefore = c.req.query("endBefore");
   if (holder !== undefined && !isAddress(holder)) return c.json({ error: "invalid_holder" }, 400);
   if (vehicleId !== undefined && !(isHex(vehicleId) && vehicleId.length === 66)) return c.json({ error: "invalid_vehicle_id" }, 400);
+  if ([endAfter, endBefore].some((value) => value !== undefined && !isId(value))) return c.json({ error: "invalid_time" }, 400);
   const rows = await db
     .select()
     .from(policy)
@@ -34,6 +38,9 @@ app.get("/v1/policies", async (c) => {
       and(
         holder ? eq(policy.holder, holder.toLowerCase() as `0x${string}`) : undefined,
         vehicleId ? eq(policy.vehicleId, vehicleId.toLowerCase() as `0x${string}`) : undefined,
+        endAfter ? gte(policy.endTime, BigInt(endAfter)) : undefined,
+        endBefore ? lt(policy.endTime, BigInt(endBefore)) : undefined,
+        endAfter || endBefore ? eq(policy.cancelled, false) : undefined,
       ),
     )
     .orderBy(desc(policy.id))
@@ -111,6 +118,34 @@ app.get("/v1/decisions", async (c) => {
     : [];
   const byId = new Map(claims.map((row) => [row.id, row]));
   return c.json(toJson({ decisions: events.map((event) => ({ ...event, claim: byId.get(event.claimId) ?? null })) }));
+});
+
+/// Everything that happened at or after `?since=` (unix seconds), oldest first, for the
+/// notification worker: claim status changes (with the claim) and policies bought or cancelled.
+/// Items sharing the boundary second can come back on the next call; callers deduplicate.
+app.get("/v1/activity", async (c) => {
+  const since = c.req.query("since") ?? "0";
+  if (!isId(since)) return c.json({ error: "invalid_since" }, 400);
+  const from = BigInt(since);
+  const [events, policies] = await Promise.all([
+    db.select().from(claimEvent).where(gte(claimEvent.timestamp, from)).orderBy(asc(claimEvent.timestamp), asc(claimEvent.id)).limit(500),
+    db
+      .select()
+      .from(policy)
+      .where(or(gte(policy.startTime, from), and(eq(policy.cancelled, true), gte(policy.cancelledAt, from))))
+      .orderBy(asc(policy.id))
+      .limit(500),
+  ]);
+  const claims = events.length
+    ? await db.select().from(claim).where(inArray(claim.id, [...new Set(events.map((e) => e.claimId))]))
+    : [];
+  const byId = new Map(claims.map((row) => [row.id, row]));
+  return c.json(
+    toJson({
+      claimEvents: events.map((event) => ({ ...event, claim: byId.get(event.claimId) ?? null })),
+      policies: policies.map(withStatus),
+    }),
+  );
 });
 
 /// Running totals for the public transparency page.
