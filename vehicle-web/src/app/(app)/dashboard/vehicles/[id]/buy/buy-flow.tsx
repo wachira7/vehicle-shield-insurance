@@ -35,11 +35,20 @@ const vehicleDetails = (vehicle: Vehicle) => ({
   usage: vehicle.usage,
 });
 
-export function BuyFlow({ vehicle }: { vehicle: Vehicle }) {
+export function BuyFlow({
+  vehicle,
+  initial,
+  renewingPolicyId,
+}: {
+  vehicle: Vehicle;
+  /// Pre-selected terms, e.g. the previous policy's when renewing.
+  initial?: { cover: number; deductible: number; durationDays: number };
+  renewingPolicyId?: string;
+}) {
   const bounds = coverBounds(Number(vehicle.marketValueUsdc));
-  const [cover, setCover] = useState(bounds.suggested);
-  const [deductible, setDeductible] = useState(() => deductibleOptions(bounds.suggested)[0]);
-  const [durationDays, setDurationDays] = useState(365);
+  const [cover, setCover] = useState(initial?.cover ?? bounds.suggested);
+  const [deductible, setDeductible] = useState(() => initial?.deductible ?? deductibleOptions(bounds.suggested)[0]);
+  const [durationDays, setDurationDays] = useState(initial?.durationDays ?? 365);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
   const [signed, setSigned] = useState<SignedQuote | null>(null);
@@ -107,9 +116,11 @@ export function BuyFlow({ vehicle }: { vehicle: Vehicle }) {
         <Link href={`/dashboard/vehicles/${vehicle.id}`} className="text-sm text-ink-muted hover:text-ink">
           ← {vehicle.make} {vehicle.model}
         </Link>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Buy cover</h1>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight">{renewingPolicyId ? "Renew cover" : "Buy cover"}</h1>
         <p className="mt-1 text-ink-muted">
-          For your {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.plate}), priced from the details the assessor confirmed.
+          {renewingPolicyId
+            ? `Same terms as policy #${renewingPolicyId}, priced again from your car's confirmed details. Change anything you like.`
+            : `For your ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.plate}), priced from the details the assessor confirmed.`}
         </p>
       </header>
       <Steps steps={["Choose", "Review & pay", "Covered"]} current={step === 0 ? 0 : step === 2 ? 1 : 2} />
