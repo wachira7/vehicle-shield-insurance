@@ -5,6 +5,7 @@
     "packages/*",
     "vehicle-backend",
     "vehicle-api",
-    "vehicle-indexer"
+    "vehicle-indexer",
+    "vehicle-web"
   ]
 }

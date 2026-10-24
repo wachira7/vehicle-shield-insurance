@@ -1,0 +1,30 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["vehicle-web/**", "packages/**", "yarn.lock", ".github/workflows/web-ci.yml"]
+  # Every PR runs this workflow so its check can be required.
+  pull_request:
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Web (type-check, test, build)
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn workspace vehicle-shield-web typecheck
+      - run: yarn workspace vehicle-shield-web test
+      - run: yarn workspace vehicle-shield-web build

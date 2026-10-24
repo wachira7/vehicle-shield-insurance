@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* Fintech dark: deep navy surfaces, one action color, high-contrast text. */
+@theme {
+  --color-bg: #0a1020;
+  --color-surface: #111a2e;
+  --color-surface-2: #16223a;
+  --color-line: #22304d;
+  --color-ink: #e8edf6;
+  --color-ink-muted: #94a3bd;
+  --color-ink-faint: #64748f;
+  --color-action: #2dd4a7;
+  --color-action-ink: #04261c;
+  --color-warn: #f5b84b;
+  --color-danger: #f47174;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
