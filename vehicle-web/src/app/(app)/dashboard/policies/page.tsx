@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { StatusBadge } from "@/components/status-badge";
 import { ButtonLink, Card } from "@/components/ui";
 import { formatUsdcUnits } from "@/lib/format";
@@ -24,7 +25,9 @@ export default function PoliciesPage() {
             <li key={policy.id} className="animate-step-in">
               <Card>
                 <div className="flex items-center justify-between">
-                  <p className="font-semibold">Policy #{policy.id}</p>
+                  <Link href={`/dashboard/policies/${policy.id}`} className="font-semibold hover:text-action">
+                    Policy #{policy.id}
+                  </Link>
                   <StatusBadge status={policy.status} />
                 </div>
                 <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
@@ -43,11 +46,16 @@ export default function PoliciesPage() {
                     </dd>
                   </div>
                 </dl>
-                {policy.status === "active" && (
-                  <ButtonLink href={`/dashboard/claims/new?policy=${policy.id}`} variant="secondary" className="mt-5 w-full">
-                    File a claim
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <ButtonLink href={`/dashboard/policies/${policy.id}`} variant={policy.status === "active" ? "primary" : "secondary"} className="px-3">
+                    {policy.status === "active" ? "Proof of cover" : "View policy"}
                   </ButtonLink>
-                )}
+                  {policy.status === "active" && (
+                    <ButtonLink href={`/dashboard/claims/new?policy=${policy.id}`} variant="secondary" className="px-3">
+                      File a claim
+                    </ButtonLink>
+                  )}
+                </div>
               </Card>
             </li>
           ))}
