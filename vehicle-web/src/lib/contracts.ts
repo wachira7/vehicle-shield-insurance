@@ -64,6 +64,8 @@ const REVERT_MESSAGES: Record<string, string> = {
   EvidenceRequired: "Add at least one photo of the damage.",
   InvalidClaimAmount: "Enter an amount greater than zero.",
   InvalidClaimStatus: "This claim has already moved on. Refresh to see its latest status.",
+  PolicyHasOpenClaims: "This policy has a claim in progress, so it can't be cancelled right now.",
+  PolicyHasPaidClaims: "A policy that has paid out a claim can't be cancelled. It stays active until it ends.",
   NothingToPay: "After the deductible there's nothing to pay. Approve a higher amount, or decline the claim.",
   AccessControlUnauthorizedAccount: "This wallet doesn't hold the assessor role on the contract.",
 };
