@@ -58,6 +58,12 @@ const REVERT_MESSAGES: Record<string, string> = {
   EnforcedPause: "Buying is paused for maintenance right now. Please try again later.",
   ERC20InsufficientBalance: "You don't have enough USDC for this payment.",
   ERC20InsufficientAllowance: "The payment approval didn't go through. Please try again.",
+  PolicyNotActive: "This policy isn't active, so a claim can't be filed on it.",
+  ExceedsRemainingCoverage: "That's more than the cover left on this policy. Lower the amount and try again.",
+  NotPolicyHolder: "Only the wallet holding this policy can do that.",
+  EvidenceRequired: "Add at least one photo of the damage.",
+  InvalidClaimAmount: "Enter an amount greater than zero.",
+  InvalidClaimStatus: "This claim has already moved on. Refresh to see its latest status.",
 };
 
 type ErrorLike = { name?: string; message?: string; code?: number; data?: { errorName?: string }; cause?: unknown };

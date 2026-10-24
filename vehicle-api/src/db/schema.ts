@@ -45,6 +45,8 @@ export const claimEvidence = pgTable(
     policyId: bigint("policy_id", { mode: "bigint" }).notNull(),
     manifestCid: text("manifest_cid").notNull(),
     uri: text("uri").notNull(),
+    // What happened, for the assessor. Private: never in the public manifest or on-chain.
+    description: text("description"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("claim_evidence_uri_idx").on(t.uri)],

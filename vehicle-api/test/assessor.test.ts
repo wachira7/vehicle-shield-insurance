@@ -220,6 +220,7 @@ describe("photos and evidence", () => {
   it("finds a claim's evidence by its on-chain URI", async () => {
     const form = new FormData();
     form.set("policyId", "7");
+    form.set("description", "Hail damage on the bonnet");
     form.append("files", new File([new Uint8Array(jpeg())], "dent.jpg"));
     form.append("files", new File([new Uint8Array(jpeg())], "scratch.jpg"));
     const { evidenceUri } = await (await api.request("/v1/claims/evidence", { method: "POST", headers: asA, body: form })).json();
@@ -227,7 +228,7 @@ describe("photos and evidence", () => {
     const res = await get(`/v1/assessor/evidence?uri=${encodeURIComponent(evidenceUri)}`, asAssessor);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ owner: ownerA.address, policyId: "7", uri: evidenceUri });
+    expect(body).toMatchObject({ owner: ownerA.address, policyId: "7", uri: evidenceUri, description: "Hail damage on the bonnet" });
     expect(body.photos).toHaveLength(2);
     expect((await get(`/v1/assessor/photos/${body.photos[0].id}`, asAssessor)).status).toBe(200);
 

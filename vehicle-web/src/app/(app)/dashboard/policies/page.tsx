@@ -43,6 +43,11 @@ export default function PoliciesPage() {
                     </dd>
                   </div>
                 </dl>
+                {policy.status === "active" && (
+                  <ButtonLink href={`/dashboard/claims/new?policy=${policy.id}`} variant="secondary" className="mt-5 w-full">
+                    File a claim
+                  </ButtonLink>
+                )}
               </Card>
             </li>
           ))}

@@ -6,6 +6,11 @@ const styles = {
   upcoming: "bg-surface-2 text-ink-muted",
   expired: "bg-surface-2 text-ink-faint",
   cancelled: "bg-surface-2 text-ink-faint",
+  Submitted: "bg-surface-2 text-ink",
+  UnderReview: "bg-warn/10 text-warn",
+  Approved: "bg-action/15 text-action",
+  Rejected: "bg-danger/10 text-danger",
+  Paid: "bg-action/15 text-action",
 } as const;
 
 const labels: Record<keyof typeof styles, string> = {
@@ -16,6 +21,11 @@ const labels: Record<keyof typeof styles, string> = {
   upcoming: "Starts soon",
   expired: "Expired",
   cancelled: "Cancelled",
+  Submitted: "Submitted",
+  UnderReview: "Under review",
+  Approved: "Approved",
+  Rejected: "Declined",
+  Paid: "Paid",
 };
 
 export function StatusBadge({ status }: { status: keyof typeof styles }) {
