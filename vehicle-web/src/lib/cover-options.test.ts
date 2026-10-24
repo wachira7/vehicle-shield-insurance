@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverBounds, deductibleOptions, formatCountdown } from "./cover-options";
+import { coverBounds, deductibleOptions, formatCountdown, renewalTerms } from "./cover-options";
 
 describe("coverBounds", () => {
   it("caps cover at the car's value and suggests about 80%", () => {
@@ -30,5 +30,18 @@ describe("formatCountdown", () => {
   it("shows minutes and seconds", () => {
     expect(formatCountdown(14 * 60_000 + 5_000)).toBe("14:05");
     expect(formatCountdown(-5)).toBe("0:00");
+  });
+});
+
+describe("renewalTerms", () => {
+  it("keeps the same terms when they're still valid", () => {
+    expect(renewalTerms({ cover: 7200, deductible: 700, durationDays: 365 }, 9000)).toEqual({ cover: 7200, deductible: 700, durationDays: 365 });
+  });
+
+  it("fits the cover to the car's current value and snaps to offered options", () => {
+    const terms = renewalTerms({ cover: 12_000, deductible: 777, durationDays: 364 }, 9000);
+    expect(terms.cover).toBe(9000);
+    expect(deductibleOptions(9000)).toContain(terms.deductible);
+    expect(terms.durationDays).toBe(365);
   });
 });

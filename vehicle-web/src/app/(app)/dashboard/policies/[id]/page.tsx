@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useReadContract } from "wagmi";
+import { PolicyActions } from "@/components/policy-actions";
 import { QrCode } from "@/components/qr-code";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/components/toast";
@@ -11,8 +12,8 @@ import { Button, ButtonLink, Card } from "@/components/ui";
 import { fetchPolicyDetail } from "@/lib/api";
 import { explorerTx, insuranceCore } from "@/lib/contracts";
 import { formatUsdcUnits } from "@/lib/format";
-import { daysLeft } from "@/lib/next-step";
-import { useVehicles } from "@/lib/queries";
+import { daysLeft, latestPolicyFor } from "@/lib/next-step";
+import { usePolicies, useVehicles } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 
 const day = (seconds: string) => new Date(Number(seconds) * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -22,6 +23,7 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
   const { address } = useSession();
   const policy = useQuery({ queryKey: ["policy", id], queryFn: () => fetchPolicyDetail(id), refetchInterval: 30_000 });
   const vehicles = useVehicles();
+  const policies = usePolicies();
   const remaining = useReadContract({ ...insuranceCore, functionName: "remainingCoverage", args: [BigInt(id)], query: { enabled: /^\d+$/.test(id) } });
 
   if (policy.isPending) return <div className="h-96 animate-pulse rounded-2xl bg-surface" />;
@@ -123,8 +125,15 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
           </Card>
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           <ProofOfCover policyId={p.id} active={p.status === "active"} />
+          {mine && (
+            <PolicyActions
+              policy={p}
+              vehicleRecordId={vehicle?.status === "verified" ? vehicle.id : undefined}
+              newerPolicy={latestPolicyFor(policies.data ?? [], p.vehicleId)?.id !== p.id}
+            />
+          )}
         </aside>
       </div>
     </div>
