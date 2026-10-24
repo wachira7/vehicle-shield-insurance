@@ -9,6 +9,7 @@ import { formatUnits, parseEventLogs, parseSignature } from "viem";
 import { Steps } from "@/components/steps";
 import { useToast } from "@/components/toast";
 import { Button, ButtonLink, Card } from "@/components/ui";
+import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
 import { ApiError, estimateQuote, requestSignedQuote, type Estimate, type SignedQuote, type Vehicle } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, explorerTx, insuranceCore, technicalDetails, usdc, usdcIsMock } from "@/lib/contracts";
@@ -249,6 +250,8 @@ function PayStep({
   const hasGas = gas.data !== undefined && gas.data.value > 0n;
   const wrongAccount = address && address.toLowerCase() !== signed.quote.buyer.toLowerCase();
   const wrongChain = chainId !== chain.id;
+  const { problem: walletProblem } = useWalletCheck();
+  const disconnected = walletProblem === "disconnected" || walletProblem === "reconnecting";
   const start = new Date();
   const end = new Date(start.getTime() + durationDays * 86_400_000);
 
@@ -363,7 +366,9 @@ function PayStep({
         ))}
       </dl>
 
-      {wrongAccount ? (
+      {disconnected ? (
+        <WalletNotice problem={walletProblem} />
+      ) : wrongAccount ? (
         <Notice tone="warn">This price was issued to your signed-in wallet, but a different account is connected. Switch back to continue.</Notice>
       ) : wrongChain ? (
         <Notice tone="warn">
@@ -410,7 +415,7 @@ function PayStep({
           Get a fresh price
         </Button>
       ) : (
-        <Button className="w-full" disabled={busy || !hasUsdc || !hasGas || Boolean(wrongAccount) || wrongChain} onClick={pay}>
+        <Button className="w-full" disabled={busy || disconnected || !hasUsdc || !hasGas || Boolean(wrongAccount) || wrongChain} onClick={pay}>
           {payment.kind === "signing"
             ? "Approve the payment in your wallet…"
             : payment.kind === "sending"
