@@ -1,4 +1,5 @@
 // Calls to the quote API (vehicle-api) and the indexer (vehicle-indexer).
+import type { CaptureMetadata } from "./images";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL ?? "http://localhost:42069";
@@ -186,11 +187,13 @@ export function uploadVehiclePhoto(
   view: PhotoView,
   file: Blob,
   onProgress: (fraction: number) => void,
+  meta: CaptureMetadata = {},
 ): Promise<{ photoId: string; vehicle: Vehicle }> {
   return new Promise((resolve, reject) => {
     const form = new FormData();
     form.set("view", view);
     form.set("file", file, `${view}.jpg`);
+    form.set("meta", JSON.stringify(meta));
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_URL}/v1/vehicles/${vehicleId}/photos`);
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -209,8 +212,9 @@ export function uploadVehiclePhoto(
 }
 
 /// A decrypted photo the signed-in owner can display (as an object URL; revoke when done).
-export async function fetchPhotoUrl(token: string, photoId: string): Promise<string> {
-  const response = await fetch(`${API_URL}/v1/photos/${photoId}`, { headers: { Authorization: `Bearer ${token}` } });
+export async function fetchPhotoUrl(token: string, photoId: string, scope: "owner" | "assessor" = "owner"): Promise<string> {
+  const path = scope === "assessor" ? `/v1/assessor/photos/${photoId}` : `/v1/photos/${photoId}`;
+  const response = await fetch(`${API_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!response.ok) throw new ApiError(response.status, {});
   return URL.createObjectURL(await response.blob());
 }
@@ -297,19 +301,32 @@ export async function fetchPolicyDetail(id: string): Promise<PolicyDetail | null
   }
 }
 
+export type EvidenceView = "overview" | "damage";
+
+export interface EvidencePhoto {
+  file: Blob;
+  view: EvidenceView;
+  meta: CaptureMetadata;
+}
+
 /// Uploads a claim's photos (encrypted by the API) and returns the evidence URI to submit on-chain.
+/// At least one photo must be an "overview" of the whole car with its plate readable.
 export function uploadClaimEvidence(
   token: string,
   policyId: string,
   description: string,
-  files: Blob[],
+  photos: EvidencePhoto[],
   onProgress: (fraction: number) => void,
 ): Promise<{ evidenceUri: string; photos: { id: string }[] }> {
   return new Promise((resolve, reject) => {
     const form = new FormData();
     form.set("policyId", policyId);
     if (description.trim()) form.set("description", description.trim());
-    files.forEach((file, index) => form.append("files", file, `damage-${index + 1}.jpg`));
+    photos.forEach((photo, index) => {
+      form.append("files", photo.file, `${photo.view}-${index + 1}.jpg`);
+      form.append("views", photo.view);
+      form.append("meta", JSON.stringify(photo.meta));
+    });
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_URL}/v1/claims/evidence`);
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -328,7 +345,101 @@ export function uploadClaimEvidence(
 }
 
 export const getMyEvidence = (token: string, uri: string) =>
-  request<{ uri: string; policyId: string; description: string | null; photos: { id: string }[] }>(
+  request<{ uri: string; policyId: string; description: string | null; photos: { id: string; view: EvidenceView | null }[] }>(
     `/v1/claims/evidence?uri=${encodeURIComponent(uri)}`,
     { token },
   );
+
+/// Claims oldest first, optionally only those in the given statuses (the assessor's queue).
+export async function listClaims(statuses?: ClaimStatus[]): Promise<Omit<ClaimRecord, "timeline">[]> {
+  const query = statuses ? `?status=${statuses.join(",")}` : "";
+  const response = await fetch(`${INDEXER_URL}/v1/claims${query}`);
+  if (!response.ok) throw new ApiError(response.status, {});
+  return (await response.json()).claims;
+}
+
+export async function fetchClaim(id: string): Promise<ClaimRecord | null> {
+  const response = await fetch(`${INDEXER_URL}/v1/claims/${id}`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new ApiError(response.status, {});
+  return response.json();
+}
+
+// ---------------------------------------------------------------------------
+// Assessor console (needs a session from a wallet holding ASSESSOR_ROLE)
+// ---------------------------------------------------------------------------
+
+export type MatchContext =
+  | { kind: "this-car-verification"; view: string | null }
+  | { kind: "other-vehicle"; plate: string; sameOwner: boolean }
+  | { kind: "other-claim"; policyId: string; sameOwner: boolean };
+
+export type PhotoFlag =
+  | { kind: "duplicate"; exact: boolean; distance: number; photoId: string; match: MatchContext }
+  | { kind: "taken-before-policy"; capturedAt: string }
+  | { kind: "taken-long-before-claim"; days: number }
+  | { kind: "taken-after-upload" }
+  | { kind: "no-metadata" };
+
+export type SummaryFlag =
+  | { kind: "no-overview" }
+  | { kind: "several-cameras"; cameras: string[] }
+  | { kind: "far-apart"; km: number };
+
+export interface CheckedPhoto {
+  id: string;
+  view: string | null;
+  capturedAt: string | null;
+  gps: { lat: number; lon: number } | null;
+  camera: string | null;
+  flags: PhotoFlag[];
+}
+
+export interface ClaimReview {
+  evidence: { uri: string; policyId: string; owner: string; description: string | null; createdAt: string };
+  claimant: Profile | null;
+  policy: { vehicleId: string; startTime: string } | null;
+  vehicle: Vehicle | null;
+  photos: CheckedPhoto[];
+  flags: SummaryFlag[];
+}
+
+export interface AssessorVehicle extends Vehicle {
+  owner: string;
+  checks?: Record<string, Omit<CheckedPhoto, "id" | "view">>;
+}
+
+/// True when the session's wallet holds ASSESSOR_ROLE.
+export async function isAssessor(token: string): Promise<boolean> {
+  try {
+    await request("/v1/assessor/me", { token });
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 403 || error.status === 401)) return false;
+    throw error;
+  }
+}
+
+export const getClaimReview = (token: string, uri: string) =>
+  request<ClaimReview>(`/v1/assessor/claims/review?uri=${encodeURIComponent(uri)}`, { token });
+
+export const listVehiclesForReview = (token: string, status: VehicleStatus = "pending") =>
+  request<{ vehicles: AssessorVehicle[] }>(`/v1/assessor/vehicles?status=${status}`, { token });
+
+export const getVehicleForReview = (token: string, id: string) => request<AssessorVehicle>(`/v1/assessor/vehicles/${id}`, { token });
+
+export interface VehicleCorrections {
+  year?: number;
+  marketValueUsdc?: number;
+  mileageKm?: number;
+  condition?: number;
+  accidentsLast3Years?: number;
+  usage?: "private" | "commercial";
+  note?: string;
+}
+
+export const verifyVehicle = (token: string, id: string, corrections: VehicleCorrections) =>
+  request<AssessorVehicle>(`/v1/assessor/vehicles/${id}/verify`, { method: "POST", token, body: JSON.stringify(corrections) });
+
+export const rejectVehicle = (token: string, id: string, note: string) =>
+  request<AssessorVehicle>(`/v1/assessor/vehicles/${id}/reject`, { method: "POST", token, body: JSON.stringify({ note }) });

@@ -11,6 +11,13 @@ export function claimStatusName(value: number): ClaimStatus {
   return name;
 }
 
+/// Parses `?status=Submitted,UnderReview`; undefined means "any status", null means invalid.
+export function parseClaimStatuses(query: string | undefined): ClaimStatus[] | undefined | null {
+  if (query === undefined || query === "") return undefined;
+  const names = query.split(",").map((name) => name.trim());
+  return names.every((name): name is ClaimStatus => (CLAIM_STATUSES as readonly string[]).includes(name)) ? names : null;
+}
+
 export type PolicyStatus = "active" | "upcoming" | "expired" | "cancelled";
 
 /// Mirrors InsuranceCore.isPolicyActive: active from startTime (inclusive) to endTime (exclusive).

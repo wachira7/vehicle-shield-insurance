@@ -1,16 +1,17 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
 import { waitForTransactionReceipt } from "@wagmi/core";
+import { SecurePhoto } from "@/components/secure-photo";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/components/toast";
 import { Button, Card } from "@/components/ui";
 import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
-import { fetchPhotoUrl, getMyEvidence, type ClaimRecord, type ClaimStatus } from "@/lib/api";
+import { getMyEvidence, type ClaimRecord, type ClaimStatus } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, explorerTx, insuranceCore, technicalDetails } from "@/lib/contracts";
 import { formatUsdcUnits } from "@/lib/format";
@@ -218,7 +219,7 @@ function Evidence({ uri }: { uri: string }) {
         <ul className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
           {evidence.data.photos.map((photo) => (
             <li key={photo.id}>
-              <EvidencePhoto id={photo.id} token={token!} />
+              <SecurePhoto id={photo.id} alt={photo.view === "overview" ? "Whole car" : "Damage photo"} />
             </li>
           ))}
         </ul>
@@ -226,24 +227,5 @@ function Evidence({ uri }: { uri: string }) {
         <p className="mt-2 text-sm text-ink-muted">Photos are unavailable right now.</p>
       )}
     </Card>
-  );
-}
-
-function EvidencePhoto({ id, token }: { id: string; token: string }) {
-  const [url, setUrl] = useState<string>();
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    fetchPhotoUrl(token, id)
-      .then((value) => setUrl((objectUrl = value)))
-      .catch(() => {});
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [id, token]);
-  return url ? (
-    // eslint-disable-next-line @next/next/no-img-element -- decrypted photo from an object URL
-    <img src={url} alt="Damage photo" className="aspect-square w-full rounded-xl border border-line object-cover" />
-  ) : (
-    <div className="aspect-square animate-pulse rounded-xl bg-surface-2" />
   );
 }

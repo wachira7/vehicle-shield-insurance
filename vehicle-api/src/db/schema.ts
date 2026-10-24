@@ -1,4 +1,4 @@
-import { bigint, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, doublePrecision, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 /// Single-use Sign-In with Ethereum nonces. A nonce is deleted when it is used.
 export const authNonces = pgTable("auth_nonce", {
@@ -52,7 +52,8 @@ export const claimEvidence = pgTable(
   (t) => [index("claim_evidence_uri_idx").on(t.uri)],
 );
 
-/// An encrypted photo in storage. `sha256` is of the original image, for integrity checks.
+/// An encrypted photo in storage. `sha256` is of the stored image (EXIF removed), for integrity
+/// checks and exact-duplicate detection; `phash` is a perceptual fingerprint (see forensics.ts).
 export const photos = pgTable(
   "photo",
   {
@@ -61,15 +62,27 @@ export const photos = pgTable(
     purpose: photoPurpose("purpose").notNull(),
     vehicleSubmissionId: uuid("vehicle_submission_id").references(() => vehicles.id),
     evidenceId: uuid("evidence_id").references(() => claimEvidence.id),
-    view: text("view"),
+    view: text("view"), // vehicle: front, back, ...; claim: overview (whole car, plate visible) or damage
     storageKey: text("storage_key").notNull(),
     cid: text("cid").notNull(),
     sha256: text("sha256").notNull(),
     contentType: text("content_type").notNull(),
     size: integer("size").notNull(),
+    phash: text("phash"),
+    // When, where and with what the photo was taken, if known; `metadataSource` says whether it
+    // came from the file itself or was reported by the uploading device.
+    capturedAt: timestamp("captured_at", { withTimezone: true }),
+    gpsLat: doublePrecision("gps_lat"),
+    gpsLon: doublePrecision("gps_lon"),
+    camera: text("camera"),
+    metadataSource: text("metadata_source", { enum: ["file", "device"] }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("photo_vehicle_idx").on(t.vehicleSubmissionId), index("photo_evidence_idx").on(t.evidenceId)],
+  (t) => [
+    index("photo_vehicle_idx").on(t.vehicleSubmissionId),
+    index("photo_evidence_idx").on(t.evidenceId),
+    index("photo_sha256_idx").on(t.sha256),
+  ],
 );
 
 /// Contact details collected after a wallet's first sign-in (registration). Needed to reach

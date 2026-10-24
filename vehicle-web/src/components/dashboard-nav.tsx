@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { useIsAssessor } from "@/lib/queries";
 
 const icon = (path: ReactNode) => (
   <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -51,20 +52,35 @@ export const NAV = [
   },
 ];
 
+/// Shown only to wallets holding ASSESSOR_ROLE.
+const ASSESSOR_ITEM = {
+  href: "/dashboard/assessor",
+  label: "Assess",
+  icon: icon(
+    <>
+      <circle cx="11" cy="11" r="6" />
+      <path d="M20 20l-4.5-4.5M8.5 11l2 2 3.5-4" />
+    </>,
+  ),
+};
+
 const isActive = (pathname: string, href: string) =>
   href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
 /// Sidebar on large screens, a thumb-friendly tab bar on phones.
 export function DashboardNav() {
   const pathname = usePathname();
+  const assessor = useIsAssessor();
+  // The account link stays last; the assessor link sits just before it.
+  const items = assessor.data ? [...NAV.slice(0, -1), ASSESSOR_ITEM, NAV[NAV.length - 1]] : NAV;
   return (
     <>
       <nav aria-label="Dashboard" className="sticky top-24 hidden w-52 shrink-0 self-start lg:block">
         <ul className="space-y-1">
-          {NAV.map((item) => {
+          {items.map((item) => {
             const active = isActive(pathname, item.href);
             return (
-              <li key={item.href}>
+              <li key={item.href} className="animate-step-in">
                 <Link
                   href={item.href}
                   aria-current={active ? "page" : undefined}
@@ -86,8 +102,8 @@ export function DashboardNav() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <ul className="grid grid-cols-5">
-          {NAV.map((item) => {
+        <ul className={`grid ${items.length > 5 ? "grid-cols-6" : "grid-cols-5"}`}>
+          {items.map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <li key={item.href}>

@@ -21,3 +21,31 @@ export async function prepareImage(file: File): Promise<Blob> {
     return file;
   }
 }
+
+export interface CaptureMetadata {
+  capturedAt?: string;
+  lat?: number;
+  lon?: number;
+  camera?: string;
+}
+
+/// When, where and with which camera a photo was taken, read from the original file before
+/// prepareImage re-encodes it (which drops this data). Sent alongside the upload so the
+/// assessor can see it; the API strips it from the stored image. Empty when unavailable.
+export async function readCaptureMetadata(file: File): Promise<CaptureMetadata> {
+  try {
+    const { default: exifr } = await import("exifr");
+    const tags = await exifr.parse(file, { tiff: true, exif: true, gps: true, xmp: false, icc: false });
+    if (!tags) return {};
+    const when = tags.DateTimeOriginal ?? tags.CreateDate;
+    const camera = [tags.Make, tags.Model].filter((part) => typeof part === "string" && part.trim()).join(" ").trim();
+    return {
+      capturedAt: when instanceof Date && !Number.isNaN(when.getTime()) ? when.toISOString() : undefined,
+      lat: Number.isFinite(tags.latitude) ? tags.latitude : undefined,
+      lon: Number.isFinite(tags.longitude) ? tags.longitude : undefined,
+      camera: camera ? camera.slice(0, 80) : undefined,
+    };
+  } catch {
+    return {};
+  }
+}

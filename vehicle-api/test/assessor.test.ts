@@ -3,14 +3,16 @@ import { Wallet } from "ethers";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { createSiweMessage } from "viem/siwe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { deployments, priceQuote } from "@vehicle-shield/protocol";
+import { deployments, priceQuote, vehicleIdFor } from "@vehicle-shield/protocol";
 import { createApp } from "../src/app";
-import { openDatabase, type Database } from "../src/db";
+import { openDatabase, schema, type Database } from "../src/db";
 import { PHOTO_VIEWS } from "../src/photos";
 import { memoryStore } from "../src/storage";
 import { databaseVerifier } from "../src/verification";
 
 const NOW = new Date("2026-06-01T00:00:00Z");
+// What the stubbed chain says about each policy.
+const chainPolicies = new Map<bigint, { vehicleId: string; startTime: Date }>();
 const assessor = privateKeyToAccount(generatePrivateKey());
 const ownerA = privateKeyToAccount(generatePrivateKey());
 const ownerB = privateKeyToAccount(generatePrivateKey());
@@ -34,6 +36,7 @@ const app = () =>
     store: memoryStore(),
     photoKey: randomBytes(32),
     isAssessor: async (address) => address === assessor.address,
+    readPolicy: async (policyId) => chainPolicies.get(policyId) ?? null,
     now: () => NOW,
   });
 
@@ -77,7 +80,12 @@ const post = (path: string, body: unknown, headers: Record<string, string>) =>
 
 const jpeg = () => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), randomBytes(500)]);
 
-async function submit(plate: string, headers: Record<string, string>, photos: readonly string[] = PHOTO_VIEWS) {
+async function submit(
+  plate: string,
+  headers: Record<string, string>,
+  photos: readonly string[] = PHOTO_VIEWS,
+  image: (view: string) => Uint8Array = () => jpeg(),
+) {
   const vehicle = await (
     await post(
       "/v1/vehicles",
@@ -98,7 +106,7 @@ async function submit(plate: string, headers: Record<string, string>, photos: re
   for (const view of photos) {
     const form = new FormData();
     form.set("view", view);
-    form.set("file", new File([new Uint8Array(jpeg())], `${view}.jpg`));
+    form.set("file", new File([new Uint8Array(image(view))], `${view}.jpg`));
     await api.request(`/v1/vehicles/${vehicle.id}/photos`, { method: "POST", headers, body: form });
   }
   return vehicle;
@@ -223,6 +231,8 @@ describe("photos and evidence", () => {
     form.set("description", "Hail damage on the bonnet");
     form.append("files", new File([new Uint8Array(jpeg())], "dent.jpg"));
     form.append("files", new File([new Uint8Array(jpeg())], "scratch.jpg"));
+    form.append("views", "overview");
+    form.append("views", "damage");
     const { evidenceUri } = await (await api.request("/v1/claims/evidence", { method: "POST", headers: asA, body: form })).json();
 
     const res = await get(`/v1/assessor/evidence?uri=${encodeURIComponent(evidenceUri)}`, asAssessor);
@@ -234,5 +244,93 @@ describe("photos and evidence", () => {
 
     expect((await get("/v1/assessor/evidence?uri=ipfs%3A%2F%2Fnothing", asAssessor)).status).toBe(404);
     expect((await get("/v1/assessor/evidence", asAssessor)).status).toBe(400);
+  });
+});
+
+describe("claim review", () => {
+  async function fileEvidence(policyId: string, files: { bytes: Uint8Array; view: string; meta?: object }[], headers = asA) {
+    const form = new FormData();
+    form.set("policyId", policyId);
+    form.set("description", "Side-swiped at a roundabout");
+    for (const file of files) {
+      form.append("files", new File([new Uint8Array(file.bytes)], "photo.jpg"));
+      form.append("views", file.view);
+      form.append("meta", JSON.stringify(file.meta ?? {}));
+    }
+    const res = await api.request("/v1/claims/evidence", { method: "POST", headers, body: form });
+    expect(res.status).toBe(201);
+    return (await res.json()).evidenceUri as string;
+  }
+  const review = (uri: string, headers = asAssessor) => get(`/v1/assessor/claims/review?uri=${encodeURIComponent(uri)}`, headers);
+
+  it("shows the claim beside the covered car and flags a reused verification photo", async () => {
+    const front = jpeg();
+    const vehicle = await submit("REV 001", asA, PHOTO_VIEWS, (view) => (view === "front" ? front : jpeg()));
+    await post(`/v1/assessor/vehicles/${vehicle.id}/verify`, {}, asAssessor);
+    chainPolicies.set(101n, { vehicleId: vehicleIdFor("REV 001", "salt"), startTime: new Date("2026-05-01T00:00:00Z") });
+    await db.insert(schema.profiles).values({ address: ownerA.address, fullName: "Achieng Otieno", email: "a@example.com" }).onConflictDoNothing();
+
+    const uri = await fileEvidence("101", [
+      { bytes: front, view: "overview" },
+      { bytes: jpeg(), view: "damage", meta: { capturedAt: "2026-04-20T09:00:00Z", camera: "TECNO Spark 20" } },
+      { bytes: jpeg(), view: "damage", meta: { capturedAt: "2026-05-31T09:00:00Z", camera: "Samsung A15" } },
+    ]);
+    const res = await review(uri);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.evidence).toMatchObject({ policyId: "101", owner: ownerA.address, description: "Side-swiped at a roundabout" });
+    expect(body.claimant).toMatchObject({ fullName: "Achieng Otieno" });
+    expect(body.vehicle).toMatchObject({ id: vehicle.id, plate: "REV001", status: "verified" });
+    expect(body.vehicle.photos).toHaveLength(6);
+
+    const [overview, before, recent] = body.photos;
+    expect(overview.view).toBe("overview");
+    expect(overview.flags).toContainEqual(
+      expect.objectContaining({ kind: "duplicate", exact: true, match: { kind: "this-car-verification", view: "front" } }),
+    );
+    expect(before.flags).toContainEqual(expect.objectContaining({ kind: "taken-before-policy" }));
+    expect(before.camera).toBe("TECNO Spark 20");
+    expect(recent.flags).toEqual([]);
+    expect(body.flags).toContainEqual({ kind: "several-cameras", cameras: ["TECNO Spark 20", "Samsung A15"] });
+  });
+
+  it("flags a photo reused from someone else's claim", async () => {
+    const shared = jpeg();
+    await fileEvidence("102", [{ bytes: shared, view: "overview" }], asB);
+    const uri = await fileEvidence("103", [{ bytes: shared, view: "overview" }]);
+    const [photo] = (await (await review(uri)).json()).photos;
+    expect(photo.flags).toContainEqual(
+      expect.objectContaining({ kind: "duplicate", exact: true, match: { kind: "other-claim", policyId: "102", sameOwner: false } }),
+    );
+  });
+
+  it("checks a vehicle's own photos against other owners' cars", async () => {
+    const borrowed = jpeg();
+    await submit("REV 010", asB, PHOTO_VIEWS, (view) => (view === "left" ? borrowed : jpeg()));
+    const vehicle = await submit("REV 011", asA, PHOTO_VIEWS, (view) => (view === "right" ? borrowed : jpeg()));
+    const body = await (await get(`/v1/assessor/vehicles/${vehicle.id}`, asAssessor)).json();
+    const right = body.photos.find((p: { view: string }) => p.view === "right");
+    expect(body.checks[right.id].flags).toContainEqual(
+      expect.objectContaining({ kind: "duplicate", exact: true, match: { kind: "other-vehicle", plate: "REV010", sameOwner: false } }),
+    );
+    const front = body.photos.find((p: { view: string }) => p.view === "front");
+    expect(body.checks[front.id].flags).toEqual([{ kind: "no-metadata" }]);
+  });
+
+  it("still reviews a claim whose policy the chain doesn't know", async () => {
+    const uri = await fileEvidence("999", [{ bytes: jpeg(), view: "overview" }]);
+    const body = await (await review(uri)).json();
+    expect(body.policy).toBeNull();
+    expect(body.vehicle).toBeNull();
+    expect(body.photos[0].flags).toEqual([{ kind: "no-metadata" }]);
+  });
+
+  it("is for assessors only, and needs a known evidence URI", async () => {
+    expect((await review("ipfs://nothing")).status).toBe(404);
+    expect((await get("/v1/assessor/claims/review", asAssessor)).status).toBe(400);
+    expect((await review("ipfs://nothing", asA)).status).toBe(403);
+    expect(await (await get("/v1/assessor/me", asAssessor)).json()).toMatchObject({ assessor: true });
+    expect((await get("/v1/assessor/me", asA)).status).toBe(403);
   });
 });

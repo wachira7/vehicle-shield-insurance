@@ -250,11 +250,18 @@ describe("verified vehicles", () => {
 });
 
 describe("claim evidence", () => {
-  function uploadEvidence(files: Uint8Array[], policyId = "1", headers = auth, description?: string) {
+  function uploadEvidence(
+    files: Uint8Array[],
+    policyId = "1",
+    headers = auth,
+    description?: string,
+    views: string[] = files.map((_, i) => (i === 0 ? "overview" : "damage")),
+  ) {
     const form = new FormData();
     form.set("policyId", policyId);
     if (description !== undefined) form.set("description", description);
     for (const file of files) form.append("files", new File([new Uint8Array(file)], "damage.jpg", { type: "image/jpeg" }));
+    for (const view of views) form.append("views", view);
     return app().request("/v1/claims/evidence", { method: "POST", headers, body: form });
   }
 
@@ -288,6 +295,14 @@ describe("claim evidence", () => {
 
   it("needs a signed-in wallet", async () => {
     expect((await uploadEvidence([jpeg()], "1", {})).status).toBe(401);
+  });
+
+  it("needs a view for every photo and at least one overview of the whole car", async () => {
+    const noOverview = await uploadEvidence([jpeg(), jpeg()], "1", auth, undefined, ["damage", "damage"]);
+    expect(noOverview.status).toBe(400);
+    expect((await noOverview.json()).error).toBe("overview_required");
+    expect((await uploadEvidence([jpeg(), jpeg()], "1", auth, undefined, ["overview"])).status).toBe(400);
+    expect((await uploadEvidence([jpeg()], "1", auth, undefined, ["sideways"])).status).toBe(400);
   });
 
   it("keeps the description private and lets only the owner look the evidence up", async () => {

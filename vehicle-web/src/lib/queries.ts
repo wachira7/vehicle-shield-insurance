@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchPolicyDetail, listPolicies, listVehicles } from "./api";
+import { fetchPolicyDetail, isAssessor, listPolicies, listVehicles } from "./api";
 import { useSession } from "./session";
 
 export function useVehicles() {
@@ -38,5 +38,16 @@ export function useClaims() {
     },
     enabled: policies.isSuccess,
     refetchInterval: 15_000,
+  });
+}
+
+/// Whether the signed-in wallet holds ASSESSOR_ROLE (checked on-chain by the API).
+export function useIsAssessor() {
+  const { token, address } = useSession();
+  return useQuery({
+    queryKey: ["is-assessor", address],
+    queryFn: () => isAssessor(token!),
+    enabled: Boolean(token),
+    staleTime: 5 * 60_000,
   });
 }

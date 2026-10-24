@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { loadConfig } from "./config";
 import { openDatabase } from "./db";
-import { onchainAssessorCheck, rpcSignatureCheck } from "./roles";
+import { onchainAssessorCheck, onchainPolicyReader, rpcSignatureCheck } from "./roles";
 import { filebaseStore, localStore } from "./storage";
 import { databaseVerifier } from "./verification";
 
@@ -36,6 +36,9 @@ const app = createApp({
   isAssessor: config.rpcUrl
     ? onchainAssessorCheck({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
     : async () => false,
+  readPolicy: config.rpcUrl
+    ? onchainPolicyReader({ rpcUrl: config.rpcUrl, insuranceCore: config.deployment.contracts.InsuranceCore })
+    : undefined,
   corsOrigins: config.corsOrigins,
 });
 
