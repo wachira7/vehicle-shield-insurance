@@ -79,7 +79,7 @@ export default function DashboardHome() {
             <ul className="space-y-3">
               {policies.data.slice(0, 3).map((policy) => (
                 <li key={policy.id}>
-                  <Link href={`/dashboard/policies`} className="block">
+                  <Link href={`/dashboard/policies/${policy.id}`} className="block">
                     <Card className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-2">
                       <div>
                         <p className="font-medium">Policy #{policy.id}</p>
@@ -143,7 +143,7 @@ function NextStepCard({ step }: { step: NextStep }) {
         step.kind === "covered"
           ? `Policy #${step.policy.id}: ${formatUsdcUnits(step.policy.coverage, { whole: true })} cover, ${daysLeft(step.policy.endTime)} days left.`
           : "",
-      action: { href: "/dashboard/policies", label: "View policy" },
+      action: step.kind === "covered" ? { href: `/dashboard/policies/${step.policy.id}`, label: "Proof of cover" } : undefined,
     },
   };
   const { title, body, action } = content[step.kind];

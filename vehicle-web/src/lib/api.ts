@@ -225,6 +225,8 @@ export async function fetchPhotoUrl(token: string, photoId: string, scope: "owne
 
 export interface PolicySummary {
   id: string;
+  holder?: string;
+  purchaseTx?: string;
   vehicleId: string;
   coverage: string;
   premium: string;
@@ -233,6 +235,13 @@ export interface PolicySummary {
   startTime: string;
   endTime: string;
   status: "active" | "upcoming" | "expired" | "cancelled";
+}
+
+/// Policies covering an on-chain vehicle id, newest first (for the public cover check).
+export async function listPoliciesForVehicle(vehicleId: string): Promise<PolicySummary[]> {
+  const response = await fetch(`${INDEXER_URL}/v1/policies?vehicleId=${vehicleId}`);
+  if (!response.ok) throw new ApiError(response.status, {});
+  return (await response.json()).policies;
 }
 
 export async function listPolicies(holder: string): Promise<PolicySummary[] | null> {
@@ -443,3 +452,26 @@ export const verifyVehicle = (token: string, id: string, corrections: VehicleCor
 
 export const rejectVehicle = (token: string, id: string, note: string) =>
   request<AssessorVehicle>(`/v1/assessor/vehicles/${id}/reject`, { method: "POST", token, body: JSON.stringify({ note }) });
+
+// ---------------------------------------------------------------------------
+// Public cover check (no sign-in)
+// ---------------------------------------------------------------------------
+
+export interface PublicVehicle {
+  make: string;
+  model: string;
+  year: number;
+  plate: string; // masked, e.g. KCX•••B
+}
+
+export const checkPlate = (plate: string) =>
+  request<{ vehicleId: string; vehicle: PublicVehicle | null }>(`/v1/public/check?plate=${encodeURIComponent(plate)}`);
+
+export async function getPublicVehicle(vehicleId: string): Promise<PublicVehicle | null> {
+  try {
+    return await request<PublicVehicle>(`/v1/public/vehicles/${vehicleId}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
