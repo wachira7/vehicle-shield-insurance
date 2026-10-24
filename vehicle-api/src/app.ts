@@ -16,6 +16,7 @@ import type { Database } from "./db";
 import { assessorRoutes } from "./assessor";
 import { evidenceRoutes, photoRoutes, vehicleRoutes } from "./photos";
 import { profileRoutes } from "./profile";
+import { publicRoutes } from "./public";
 import type { PolicyReader, RoleCheck } from "./roles";
 import type { BlobStore } from "./storage";
 import type { VehicleVerifier } from "./verification";
@@ -118,6 +119,7 @@ export function createApp({
 
   app.route("/v1/auth", authRoutes({ db, sessionSecret, siweDomain, chainId: deployment.chainId, now, verifySignature }));
   app.route("/v1/profile", profileRoutes({ db, sessionSecret, now }));
+  app.route("/v1/public", publicRoutes({ db, vehicleIdSalt, now }));
   const photoDeps = { db, store, photoKey, vehicleIdSalt, sessionSecret, now };
   app.route("/v1/vehicles", vehicleRoutes(photoDeps));
   app.route("/v1/claims/evidence", evidenceRoutes(photoDeps));
