@@ -138,3 +138,104 @@ export const getProfile = (token: string) => request<{ address: string; profile:
 
 export const saveProfile = (token: string, profile: { fullName: string; email: string; phone?: string }) =>
   request<{ address: string; profile: Profile }>("/v1/profile", { method: "PUT", token, body: JSON.stringify(profile) });
+
+// ---------------------------------------------------------------------------
+// Vehicles and photos
+// ---------------------------------------------------------------------------
+
+export const PHOTO_VIEWS = ["front", "back", "left", "right", "interior", "odometer"] as const;
+export type PhotoView = (typeof PHOTO_VIEWS)[number];
+
+export type VehicleStatus = "pending" | "verified" | "rejected";
+
+export interface Vehicle {
+  id: string;
+  plate: string;
+  vehicleId: string;
+  make: string;
+  model: string;
+  year: number;
+  marketValueUsdc: string;
+  mileageKm: number;
+  condition: number;
+  accidentsLast3Years: number;
+  usage: "private" | "commercial";
+  status: VehicleStatus;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  photos: { id: string; view: PhotoView; createdAt: string }[];
+  missingViews: PhotoView[];
+}
+
+export interface VehicleInputFull extends VehicleInput {
+  plate: string;
+  make: string;
+  model: string;
+}
+
+export const listVehicles = (token: string) => request<{ vehicles: Vehicle[] }>("/v1/vehicles", { token });
+
+export const submitVehicle = (token: string, vehicle: VehicleInputFull) =>
+  request<Vehicle>("/v1/vehicles", { method: "POST", token, body: JSON.stringify(vehicle) });
+
+/// Uploads one photo with progress (fetch can't report upload progress, so this uses XHR).
+export function uploadVehiclePhoto(
+  token: string,
+  vehicleId: string,
+  view: PhotoView,
+  file: Blob,
+  onProgress: (fraction: number) => void,
+): Promise<{ photoId: string; vehicle: Vehicle }> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.set("view", view);
+    form.set("file", file, `${view}.jpg`);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}/v1/vehicles/${vehicleId}/photos`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (event) => event.lengthComputable && onProgress(event.loaded / event.total);
+    xhr.onload = () => {
+      let body: Record<string, unknown> = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as unknown as { photoId: string; vehicle: Vehicle });
+      else reject(new ApiError(xhr.status, body));
+    };
+    xhr.onerror = () => reject(new ApiError(0, { error: "unreachable" }));
+    xhr.send(form);
+  });
+}
+
+/// A decrypted photo the signed-in owner can display (as an object URL; revoke when done).
+export async function fetchPhotoUrl(token: string, photoId: string): Promise<string> {
+  const response = await fetch(`${API_URL}/v1/photos/${photoId}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) throw new ApiError(response.status, {});
+  return URL.createObjectURL(await response.blob());
+}
+
+// ---------------------------------------------------------------------------
+// Policies (from the indexer)
+// ---------------------------------------------------------------------------
+
+export interface PolicySummary {
+  id: string;
+  vehicleId: string;
+  coverage: string;
+  premium: string;
+  deductible: string;
+  paidOut: string;
+  startTime: string;
+  endTime: string;
+  status: "active" | "upcoming" | "expired" | "cancelled";
+}
+
+export async function listPolicies(holder: string): Promise<PolicySummary[] | null> {
+  try {
+    const response = await fetch(`${INDEXER_URL}/v1/policies?holder=${holder}`);
+    return response.ok ? (await response.json()).policies : null;
+  } catch {
+    return null;
+  }
+}

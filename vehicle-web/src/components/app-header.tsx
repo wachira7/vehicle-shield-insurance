@@ -89,7 +89,10 @@ function AccountMenu() {
           <p className="font-mono text-xs text-ink-faint">{shortAddress(address!)}</p>
         </div>
         <div className="my-1 h-px bg-line" />
-        <Link role="menuitem" href="/account" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
+        <Link role="menuitem" href="/dashboard" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
+          Dashboard
+        </Link>
+        <Link role="menuitem" href="/dashboard/account" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
           Account
         </Link>
         <Link role="menuitem" href="/quote" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
