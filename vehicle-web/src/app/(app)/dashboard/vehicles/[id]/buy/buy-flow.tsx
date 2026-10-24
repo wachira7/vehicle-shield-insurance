@@ -4,17 +4,18 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useBalance, useConfig, useReadContract, useSwitchChain } from "wagmi";
-import { readContract, signTypedData, waitForTransactionReceipt, writeContract } from "@wagmi/core";
+import { readContract, waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, parseEventLogs, parseSignature } from "viem";
 import { Steps } from "@/components/steps";
 import { useToast } from "@/components/toast";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { ApiError, estimateQuote, requestSignedQuote, type Estimate, type SignedQuote, type Vehicle } from "@/lib/api";
 import { chain } from "@/lib/chain";
-import { describeTxError, explorerTx, insuranceCore, usdc, usdcIsMock } from "@/lib/contracts";
+import { describeTxError, explorerTx, insuranceCore, technicalDetails, usdc, usdcIsMock } from "@/lib/contracts";
 import { DURATIONS, coverBounds, deductibleOptions, formatCountdown } from "@/lib/cover-options";
 import { describeMultiplier, formatUsd, formatUsdcUnits } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { connectedWalletClient } from "@/lib/wallet-client";
 
 type Payment =
   | { kind: "idle" }
@@ -22,7 +23,7 @@ type Payment =
   | { kind: "signing" }
   | { kind: "sending" }
   | { kind: "confirming"; hash: `0x${string}` }
-  | { kind: "error"; message: string; hash?: `0x${string}` };
+  | { kind: "error"; message: string; details?: string; hash?: `0x${string}` };
 
 const vehicleDetails = (vehicle: Vehicle) => ({
   year: vehicle.year,
@@ -254,13 +255,15 @@ function PayStep({
   const mintTestUsdc = async () => {
     setPayment({ kind: "minting" });
     try {
-      const hash = await writeContract(config, { ...usdc, functionName: "mint", args: [address!, premium + 100_000_000n] });
-      await waitForTransactionReceipt(config, { hash });
+      const wallet = await connectedWalletClient(config);
+      const hash = await wallet.writeContract({ ...usdc, functionName: "mint", args: [address!, premium + 100_000_000n] });
+      await waitForTransactionReceipt(config, { hash, chainId: chain.id });
       await balance.refetch();
       setPayment({ kind: "idle" });
       toast("Test USDC added to your wallet");
     } catch (error) {
-      setPayment({ kind: "error", message: describeTxError(error) });
+      console.error("Payment step failed", error);
+      setPayment({ kind: "error", message: describeTxError(error), details: technicalDetails(error) });
     }
   };
 
@@ -272,7 +275,7 @@ function PayStep({
       const nonce = await readContract(config, { ...usdc, functionName: "nonces", args: [address!] });
       const permitDeadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
       const permit = parseSignature(
-        await signTypedData(config, {
+        await (await connectedWalletClient(config)).signTypedData({
           domain: { name, version, chainId: Number(tokenChainId), verifyingContract },
           types: {
             Permit: [
@@ -291,7 +294,7 @@ function PayStep({
       // 2. One transaction: collect the premium and issue the policy.
       setPayment({ kind: "sending" });
       const q = signed.quote;
-      const hash = await writeContract(config, {
+      const hash = await (await connectedWalletClient(config)).writeContract({
         ...insuranceCore,
         functionName: "buyPolicyWithPermit",
         args: [
@@ -314,7 +317,7 @@ function PayStep({
       });
 
       setPayment({ kind: "confirming", hash });
-      const receipt = await waitForTransactionReceipt(config, { hash });
+      const receipt = await waitForTransactionReceipt(config, { hash, chainId: chain.id });
       if (receipt.status !== "success") {
         setPayment({ kind: "error", message: "The payment was reverted on the network. Nothing was charged.", hash });
         return;
@@ -325,7 +328,8 @@ function PayStep({
       setTimeout(() => void queryClient.invalidateQueries({ queryKey: ["policies"] }), 6000);
       onPaid(purchased.args.policyId, hash);
     } catch (error) {
-      setPayment({ kind: "error", message: describeTxError(error) });
+      console.error("Payment step failed", error);
+      setPayment({ kind: "error", message: describeTxError(error), details: technicalDetails(error) });
     }
   };
 
@@ -391,6 +395,12 @@ function PayStep({
             <a href={explorerTx(payment.hash)} target="_blank" rel="noreferrer" className="ml-1 underline">
               View transaction
             </a>
+          )}
+          {payment.details && (
+            <details className="mt-2 text-xs text-ink-muted">
+              <summary className="cursor-pointer">Technical details</summary>
+              <p className="mt-1 break-words font-mono">{payment.details}</p>
+            </details>
           )}
         </Notice>
       )}
