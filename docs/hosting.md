@@ -33,7 +33,9 @@ and skips rows already there, so running it twice is harmless. Stop the local AP
      `SESSION_SECRET`, `PHOTO_ENCRYPTION_KEY`, `FILEBASE_*`, `RPC_URL`, `RESEND_API_KEY`,
      `EMAIL_FROM`, `AT_USERNAME`, `AT_API_KEY`). `VEHICLE_ID_SALT` and `PHOTO_ENCRYPTION_KEY`
      must be exactly the local values, or existing vehicles and photos won't match.
-   - Indexer: `INDEXER_RPC_URL` = a Sepolia RPC endpoint.
+   - Indexer: `INDEXER_RPC_URL` = a Sepolia RPC endpoint (the same as the API's `RPC_URL`, not a
+     localhost address). Free public Sepolia endpoints are added automatically, because a
+     free-tier key alone gets rate limited (HTTP 429) while the indexer catches up.
 3. When both are live, check their addresses (e.g. `https://vehicleshield-api.onrender.com`).
    If the indexer's differs from `INDEXER_URL` in the API's settings, update it there.
 4. Check `https://<api>/health` and `https://<indexer>/ready` answer.
