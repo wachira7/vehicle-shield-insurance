@@ -85,8 +85,8 @@ export function technicalDetails(error: unknown): string {
   return [e?.name, e?.shortMessage ?? e?.message, e?.details].filter(Boolean).join(" · ").slice(0, 600);
 }
 
-/// Turns wallet and contract errors into plain words.
-export function describeTxError(error: unknown): string {
+/// Turns wallet and contract errors into plain words; `fallback` is used when nothing more specific fits.
+export function describeTxError(error: unknown, fallback = "The payment didn't go through. Nothing was charged. Please try again."): string {
   if (findInChain(error, (e) => e.name === "UserRejectedRequestError" || e.code === 4001)) {
     return "You cancelled in your wallet, so nothing was sent and you weren't charged.";
   }
@@ -94,9 +94,10 @@ export function describeTxError(error: unknown): string {
   const errorName = revert?.data?.errorName;
   if (errorName && REVERT_MESSAGES[errorName]) return REVERT_MESSAGES[errorName];
   const text = `${(error as ErrorLike)?.name ?? ""} ${(error as ErrorLike)?.message ?? ""}`;
+  if (/Connect a wallet first/.test(text)) return "Your wallet isn't connected. Reconnect it and try again.";
   if (/insufficient funds/i.test(text)) return "Your wallet needs a little Sepolia ETH to pay the network fee.";
   if (/UserRejected|rejected|denied|cancel/i.test(text)) {
     return "You cancelled in your wallet, so nothing was sent and you weren't charged.";
   }
-  return "The payment didn't go through. Nothing was charged. Please try again.";
+  return fallback;
 }

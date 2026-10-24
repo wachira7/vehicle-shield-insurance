@@ -9,6 +9,7 @@ import { waitForTransactionReceipt } from "@wagmi/core";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/components/toast";
 import { Button, Card } from "@/components/ui";
+import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
 import { fetchPhotoUrl, getMyEvidence, type ClaimRecord, type ClaimStatus } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, explorerTx, insuranceCore, technicalDetails } from "@/lib/contracts";
@@ -79,6 +80,8 @@ function PayoutCard({ claim, deductible }: { claim: ClaimRecord; deductible?: st
     kind: "idle",
   });
 
+  const wallet = useWalletCheck();
+
   const collect = async () => {
     try {
       setState({ kind: "wallet" });
@@ -91,7 +94,7 @@ function PayoutCard({ claim, deductible }: { claim: ClaimRecord; deductible?: st
       setTimeout(() => void queryClient.invalidateQueries({ queryKey: ["claims"] }), 4000);
     } catch (error) {
       console.error("Collecting payout failed", error);
-      setState({ kind: "error", message: describeTxError(error), details: technicalDetails(error) });
+      setState({ kind: "error", message: describeTxError(error, "The payout wasn't sent. Please try again."), details: technicalDetails(error) });
     }
   };
 
@@ -136,7 +139,8 @@ function PayoutCard({ claim, deductible }: { claim: ClaimRecord; deductible?: st
               </details>
             </div>
           )}
-          <Button className="w-full" onClick={collect} disabled={state.kind === "wallet" || state.kind === "confirming"}>
+          {state.kind === "idle" && <WalletNotice problem={wallet.problem} />}
+          <Button className="w-full" onClick={collect} disabled={!wallet.ready || state.kind === "wallet" || state.kind === "confirming"}>
             {state.kind === "wallet" ? "Confirm in your wallet…" : state.kind === "confirming" ? "Sending your payout…" : `Collect ${formatUsdcUnits(claim.payoutAmount ?? "0")}`}
           </Button>
           {state.kind === "confirming" && (

@@ -36,4 +36,9 @@ describe("describeTxError", () => {
     expect(describeTxError(new Error("insufficient funds for gas * price + value"))).toMatch(/Sepolia ETH/);
     expect(describeTxError(new Error("something odd"))).toMatch(/Nothing was charged/);
   });
+
+  it("names a disconnected wallet and uses the caller's fallback wording", () => {
+    expect(describeTxError(new Error("Connect a wallet first"))).toMatch(/isn't connected/);
+    expect(describeTxError(new Error("something odd"), "Your claim wasn't submitted.")).toBe("Your claim wasn't submitted.");
+  });
 });

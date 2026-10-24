@@ -9,6 +9,7 @@ import { parseEventLogs } from "viem";
 import { Steps } from "@/components/steps";
 import { useToast } from "@/components/toast";
 import { Button, ButtonLink, Card } from "@/components/ui";
+import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
 import { uploadClaimEvidence } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, insuranceCore, technicalDetails } from "@/lib/contracts";
@@ -43,6 +44,9 @@ export function ClaimForm() {
   const [phase, setPhase] = useState<Phase>({ kind: "editing" });
   const [touched, setTouched] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // The last upload, so a retry after a wallet problem doesn't upload the same photos again.
+  const uploaded = useRef<{ key: string; evidenceUri: string } | null>(null);
+  const wallet = useWalletCheck();
   const descriptionId = useId();
 
   useEffect(() => {
@@ -75,17 +79,22 @@ export function ClaimForm() {
 
   const submit = async () => {
     setTouched(true);
-    if (!policyId || errors.amount || errors.photos) return;
+    if (!policyId || errors.amount || errors.photos || !wallet.ready) return;
     try {
-      setPhase({ kind: "uploading", progress: 0 });
-      const prepared = await Promise.all(photos.map((photo) => prepareImage(photo.file)));
-      const { evidenceUri } = await uploadClaimEvidence(token!, policyId, description, prepared, (progress) =>
-        setPhase({ kind: "uploading", progress }),
-      );
+      const key = JSON.stringify([policyId, description, photos.map((photo) => photo.preview)]);
+      let evidenceUri = uploaded.current?.key === key ? uploaded.current.evidenceUri : undefined;
+      if (!evidenceUri) {
+        setPhase({ kind: "uploading", progress: 0 });
+        const prepared = await Promise.all(photos.map((photo) => prepareImage(photo.file)));
+        ({ evidenceUri } = await uploadClaimEvidence(token!, policyId, description, prepared, (progress) =>
+          setPhase({ kind: "uploading", progress }),
+        ));
+        uploaded.current = { key, evidenceUri };
+      }
 
       setPhase({ kind: "wallet" });
-      const wallet = await connectedWalletClient(config);
-      const hash = await wallet.writeContract({
+      const client = await connectedWalletClient(config);
+      const hash = await client.writeContract({
         ...insuranceCore,
         functionName: "submitClaim",
         args: [BigInt(policyId), amountUnits, evidenceUri],
@@ -99,7 +108,7 @@ export function ClaimForm() {
       router.push(`/dashboard/claims/${submitted.args.claimId}?new=1`);
     } catch (error) {
       console.error("Claim submission failed", error);
-      setPhase({ kind: "error", message: describeTxError(error), details: technicalDetails(error) });
+      setPhase({ kind: "error", message: describeTxError(error, "Your claim wasn't submitted. Please try again."), details: technicalDetails(error) });
     }
   };
 
@@ -255,7 +264,9 @@ export function ClaimForm() {
           </div>
         )}
 
-        <Button className="w-full" onClick={submit} disabled={busy}>
+        {!busy && <WalletNotice problem={wallet.problem} />}
+
+        <Button className="w-full" onClick={submit} disabled={busy || !wallet.ready}>
           {phase.kind === "uploading"
             ? `Uploading photos… ${Math.round(phase.progress * 100)}%`
             : phase.kind === "wallet"
