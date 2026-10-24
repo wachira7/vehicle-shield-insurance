@@ -71,15 +71,17 @@ export function assessorRoutes(deps: AssessorDeps) {
   /// Lets the web app show the console only to assessors.
   app.get("/me", (c) => c.json({ address: c.get("address"), assessor: true }));
 
-  /// The review queue, oldest first. `?status=` picks pending (default), verified or rejected.
+  /// The review queue, oldest first. `?status=` picks pending (default), verified or rejected;
+  /// `?mine=1` lists the caller's own decisions, newest first (their history).
   app.get("/vehicles", async (c) => {
     const status = z.enum(["pending", "verified", "rejected"]).safeParse(c.req.query("status") ?? "pending");
     if (!status.success) return c.json({ error: "invalid_status" }, 400);
+    const mine = c.req.query("mine") === "1";
     const rows = await db
       .select()
       .from(schema.vehicles)
-      .where(eq(schema.vehicles.status, status.data))
-      .orderBy(asc(schema.vehicles.createdAt))
+      .where(and(eq(schema.vehicles.status, status.data), mine ? eq(schema.vehicles.reviewedBy, c.get("address")) : undefined))
+      .orderBy(mine ? desc(schema.vehicles.reviewedAt) : asc(schema.vehicles.createdAt))
       .limit(200);
     return c.json({ vehicles: await Promise.all(rows.map((row) => describeVehicle(db, row))) });
   });

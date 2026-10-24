@@ -9,6 +9,7 @@ import { Button, Card } from "@/components/ui";
 import { ApiError, saveProfile } from "@/lib/api";
 import { useFieldErrors } from "@/lib/form";
 import { phoneError } from "@/lib/phone";
+import { useIsAssessor } from "@/lib/queries";
 import { safeNext } from "@/lib/redirect";
 import { useSession } from "@/lib/session";
 
@@ -24,6 +25,7 @@ export function ProfileForm() {
   const [serverErrors, setServerErrors] = useState<Partial<Fields> & { form?: string }>({});
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const isNew = profile === null;
+  const staff = useIsAssessor().data === true;
 
   // Start from the saved profile, or the email from a Google/email sign-in, once. The wallet
   // SDK hands out a new embeddedWalletInfo object on every refresh, so re-applying this on each
@@ -79,10 +81,13 @@ export function ProfileForm() {
     <Card className="p-6 sm:p-8">
       {isNew && <Steps steps={["Connect", "Confirm it's you", "Your details"]} current={2} />}
       <div className={`animate-step-in ${isNew ? "mt-8" : ""}`}>
-        <h1 className="text-2xl font-semibold tracking-tight">{isNew ? "Almost there" : "Your details"}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {staff ? (isNew ? "Set up your staff profile" : "Your staff profile") : isNew ? "Almost there" : "Your details"}
+        </h1>
         <p className="mt-2 text-sm text-ink-muted">
-          We use these to reach you about your policy and claims. They stay private and never go on the
-          blockchain.
+          {staff
+            ? "Your name appears on the decisions you make in the console. Contact details stay private and never go on the blockchain."
+            : "We use these to reach you about your policy and claims. They stay private and never go on the blockchain."}
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
           <Field label="Full name" autoComplete="name" value={fields.fullName} error={errorFor("fullName")} onBlur={() => blur("fullName")} onChange={(v) => setFields({ ...fields, fullName: v })} />

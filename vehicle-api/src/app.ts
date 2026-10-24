@@ -11,7 +11,7 @@ import {
   type Deployment,
   type PricingResult,
 } from "@vehicle-shield/protocol";
-import { authRoutes, type SignatureCheck } from "./auth";
+import { STAFF_ACCOUNT, authRoutes, type SignatureCheck } from "./auth";
 import type { Database } from "./db";
 import { assessorRoutes } from "./assessor";
 import { evidenceRoutes, photoRoutes, vehicleRoutes } from "./photos";
@@ -120,7 +120,7 @@ export function createApp({
   app.route("/v1/auth", authRoutes({ db, sessionSecret, siweDomain, chainId: deployment.chainId, now, verifySignature }));
   app.route("/v1/profile", profileRoutes({ db, sessionSecret, now }));
   app.route("/v1/public", publicRoutes({ db, vehicleIdSalt, now }));
-  const photoDeps = { db, store, photoKey, vehicleIdSalt, sessionSecret, now };
+  const photoDeps = { db, store, photoKey, vehicleIdSalt, sessionSecret, now, isStaff: isAssessor };
   app.route("/v1/vehicles", vehicleRoutes(photoDeps));
   app.route("/v1/claims/evidence", evidenceRoutes(photoDeps));
   app.route("/v1/photos", photoRoutes(photoDeps));
@@ -146,6 +146,8 @@ export function createApp({
     const parsed = quoteRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: "invalid_request", issues: parsed.error.issues }, 400);
     const { vehicle, buyer, plate, ...request } = parsed.data;
+    // No signed price, no policy: this is what keeps assessor wallets from buying cover.
+    if (await isAssessor(buyer as `0x${string}`)) return c.json(STAFF_ACCOUNT, 403);
 
     const vehicleId = vehicleIdFor(plate, vehicleIdSalt);
     const verification = await verifier.check(vehicleId, buyer);

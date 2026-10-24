@@ -334,3 +334,47 @@ describe("claim review", () => {
     expect((await get("/v1/assessor/me", asA)).status).toBe(403);
   });
 });
+
+describe("staff accounts", () => {
+  it("can't register cars, upload claim evidence or get a price to buy cover", async () => {
+    const vehicle = await post(
+      "/v1/vehicles",
+      { plate: "STAFF 1", make: "Mazda", model: "Demio", year: 2017, marketValueUsdc: 7_000, mileageKm: 1, condition: 8, accidentsLast3Years: 0, usage: "private" },
+      asAssessor,
+    );
+    expect(vehicle.status).toBe(403);
+    expect((await vehicle.json()).error).toBe("staff_account");
+
+    const form = new FormData();
+    form.set("policyId", "1");
+    form.append("files", new File([new Uint8Array(jpeg())], "x.jpg"));
+    form.append("views", "overview");
+    expect((await api.request("/v1/claims/evidence", { method: "POST", headers: asAssessor, body: form })).status).toBe(403);
+
+    const quote = await post(
+      "/v1/quotes",
+      {
+        buyer: assessor.address,
+        plate: "STAFF 1",
+        vehicle: { year: 2017, marketValueUsdc: 7_000, mileageKm: 1, condition: 8, accidentsLast3Years: 0, usage: "private" },
+        coverageUsdc: 6_000,
+        deductibleUsdc: 300,
+        durationDays: 365,
+      },
+      {},
+    );
+    expect(quote.status).toBe(403);
+    expect((await quote.json()).error).toBe("staff_account");
+  });
+
+  it("lists an assessor's own vehicle decisions", async () => {
+    const first = await submit("MINE 01", asA);
+    const second = await submit("MINE 02", asB);
+    await post(`/v1/assessor/vehicles/${first.id}/verify`, {}, asAssessor);
+    await post(`/v1/assessor/vehicles/${second.id}/verify`, {}, asAssessor);
+    const { vehicles } = await (await get("/v1/assessor/vehicles?status=verified&mine=1", asAssessor)).json();
+    const ids = vehicles.map((v: { id: string }) => v.id);
+    expect(ids).toEqual(expect.arrayContaining([first.id, second.id]));
+    expect(vehicles.every((v: { reviewedBy: string }) => v.reviewedBy === assessor.address)).toBe(true);
+  });
+});

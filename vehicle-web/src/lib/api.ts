@@ -475,3 +475,22 @@ export async function getPublicVehicle(vehicleId: string): Promise<PublicVehicle
     throw error;
   }
 }
+
+export interface DecisionRecord {
+  claimId: string;
+  status: "Approved" | "Rejected";
+  timestamp: string;
+  txHash: string;
+  actor: string;
+  claim: Omit<ClaimRecord, "timeline"> | null;
+}
+
+/// Claim approvals and declines, newest first, optionally by one assessor's wallet.
+export async function listDecisions(actor?: string): Promise<DecisionRecord[]> {
+  const response = await fetch(`${INDEXER_URL}/v1/decisions${actor ? `?actor=${actor}` : ""}`);
+  if (!response.ok) throw new ApiError(response.status, {});
+  return (await response.json()).decisions;
+}
+
+export const listMyVehicleDecisions = (token: string, status: "verified" | "rejected") =>
+  request<{ vehicles: AssessorVehicle[] }>(`/v1/assessor/vehicles?status=${status}&mine=1`, { token });

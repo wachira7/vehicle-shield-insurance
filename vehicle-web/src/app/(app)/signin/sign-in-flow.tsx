@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppKit } from "@reown/appkit/react";
@@ -30,6 +31,8 @@ function describeError(error: unknown): string {
 export function SignInFlow() {
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
+  // Arriving from "Staff sign-in" (or any console link): word the page for assessors.
+  const staff = next.startsWith("/assessor");
   const { open } = useAppKit();
   const { isConnected, chainId, status: walletStatus } = useAccount();
   const { switchChain, isPending: switching } = useSwitchChain();
@@ -80,10 +83,11 @@ export function SignInFlow() {
       <div key={`${step}-${onWrongNetwork}-${Boolean(error)}`} className="animate-step-in mt-8" aria-live="polite">
         {!isConnected ? (
           <>
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in or create an account</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{staff ? "Assessor sign-in" : "Sign in or create an account"}</h1>
             <p className="mt-2 text-sm text-ink-muted">
-              Use Google, Apple, X, email or a crypto wallet. New here? Signing in creates your account. No password
-              to remember.
+              {staff
+                ? "Use your staff account: the Google, email or wallet login that holds the assessor role. Your personal customer account won't open the console."
+                : "Use Google, Apple, X, email or a crypto wallet. New here? Signing in creates your account. No password to remember."}
             </p>
             <Button className="mt-6 w-full" onClick={() => open()} disabled={walletStatus === "connecting" || walletStatus === "reconnecting"}>
               {walletStatus === "connecting" || walletStatus === "reconnecting" ? <Spinner label="Connecting" /> : "Continue"}
@@ -96,8 +100,26 @@ export function SignInFlow() {
               ))}
             </ul>
             <p className="mt-6 text-xs text-ink-faint">
-              Signing in with Google or email creates a secure wallet for you automatically, so your policies and
-              payouts belong to you.
+              {staff
+                ? "Every decision you make is signed by this account's wallet and recorded on-chain."
+                : "Signing in with Google or email creates a secure wallet for you automatically, so your policies and payouts belong to you."}
+            </p>
+            <p className="mt-6 border-t border-line pt-4 text-center text-sm text-ink-muted">
+              {staff ? (
+                <>
+                  Not staff?{" "}
+                  <Link href="/signin" className="font-medium text-action hover:underline">
+                    Sign in as a customer
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Staff?{" "}
+                  <Link href="/signin?next=%2Fassessor" className="font-medium text-action hover:underline">
+                    Sign in to the assessor console
+                  </Link>
+                </>
+              )}
             </p>
           </>
         ) : onWrongNetwork ? (

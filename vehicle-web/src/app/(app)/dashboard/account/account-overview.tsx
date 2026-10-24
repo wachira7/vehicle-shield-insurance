@@ -16,7 +16,9 @@ const providerNames: Record<string, string> = {
   email: "email",
 };
 
-export function AccountOverview() {
+/// The signed-in account. `staff` words it for an assessor, whose wallet signs decisions rather
+/// than holding policies.
+export function AccountOverview({ staff = false }: { staff?: boolean }) {
   const { address, profile } = useSession();
   const { embeddedWalletInfo } = useAppKitAccount();
   const [copied, setCopied] = useState(false);
@@ -43,7 +45,7 @@ export function AccountOverview() {
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Your details</h2>
-            <ButtonLink href="/register?next=/dashboard/account" variant="ghost" className="px-0 py-0">
+            <ButtonLink href={`/register?next=${staff ? "/assessor/account" : "/dashboard/account"}`} variant="ghost" className="px-0 py-0">
               Edit
             </ButtonLink>
           </div>
@@ -63,13 +65,17 @@ export function AccountOverview() {
               </div>
             </dl>
           ) : (
-            <p className="mt-3 text-sm text-ink-muted">Add your name and email so we can reach you about claims.</p>
+            <p className="mt-3 text-sm text-ink-muted">
+              {staff ? "Add your name: it's shown on the decisions you make." : "Add your name and email so we can reach you about claims."}
+            </p>
           )}
         </Card>
 
         <Card>
           <h2 className="font-semibold">Your wallet</h2>
-          <p className="mt-1 text-sm text-ink-muted">Policies and payouts are held here. Only you control it.</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            {staff ? "Signs your review decisions on-chain. Only you control it." : "Policies and payouts are held here. Only you control it."}
+          </p>
           <button
             type="button"
             onClick={copy}

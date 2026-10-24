@@ -1,6 +1,6 @@
 // Plain-language wording for the API's photo warning signs. Each one is a prompt for the
 // assessor to look closer, never a verdict, so the copy says what was found and what to check.
-import type { MatchContext, PhotoFlag, SummaryFlag } from "./api";
+import type { AssessorVehicle, ClaimReview, MatchContext, PhotoFlag, SummaryFlag } from "./api";
 
 export type Tone = "danger" | "warn" | "info";
 
@@ -112,4 +112,27 @@ export function collapseMissingMetadata<T extends { flags: PhotoFlag[] }>(photos
   const allMissing = photos.length > 1 && photos.every((photo) => photo.flags.some((flag) => flag.kind === "no-metadata"));
   if (!allMissing) return { photos, allMissing };
   return { photos: photos.map((photo) => ({ ...photo, flags: photo.flags.filter((flag) => flag.kind !== "no-metadata") })), allMissing };
+}
+
+/// Everything worth a second look on a claim, deduplicated: claim-wide signs first, then each
+/// photo's (informational ones excluded). Shared by the queue and the review page.
+export function claimWarnings(review: ClaimReview): FlagText[] {
+  const { photos, allMissing } = collapseMissingMetadata(review.photos);
+  const summary = [
+    ...review.flags.map(describeSummaryFlag),
+    ...(allMissing ? [{ ...describeFlag({ kind: "no-metadata" }, "claim"), title: "No capture details on any photo" }] : []),
+  ];
+  const perPhoto = photos.flatMap((photo) => photo.flags.map((flag) => describeFlag(flag, "claim", review.evidence.policyId)));
+  return dedupeFlags([...summary, ...perPhoto.filter((flag) => flag.tone !== "info")]);
+}
+
+/// The same for a vehicle's verification photos.
+export function vehicleWarnings(vehicle: AssessorVehicle): FlagText[] {
+  const flags = Object.values(vehicle.checks ?? {}).flatMap((check) => check.flags.map((flag) => describeFlag(flag, "vehicle")));
+  return dedupeFlags(flags.filter((flag) => flag.tone !== "info"));
+}
+
+export function dedupeFlags(flags: FlagText[]): FlagText[] {
+  const seen = new Set<string>();
+  return flags.filter((flag) => !seen.has(flag.title + flag.detail) && seen.add(flag.title + flag.detail));
 }

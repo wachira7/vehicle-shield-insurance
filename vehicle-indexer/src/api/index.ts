@@ -90,6 +90,29 @@ app.get("/v1/claims/:id", async (c) => {
   return c.json(toJson({ ...row, timeline }));
 });
 
+/// Review decisions (approvals and declines), newest first, optionally by the wallet that made
+/// them: an assessor's history. Each comes with its claim's amounts.
+app.get("/v1/decisions", async (c) => {
+  const actor = c.req.query("actor");
+  if (actor !== undefined && !isAddress(actor)) return c.json({ error: "invalid_actor" }, 400);
+  const events = await db
+    .select()
+    .from(claimEvent)
+    .where(
+      and(
+        inArray(claimEvent.status, ["Approved", "Rejected"]),
+        actor ? eq(claimEvent.actor, actor.toLowerCase() as `0x${string}`) : undefined,
+      ),
+    )
+    .orderBy(desc(claimEvent.timestamp), desc(claimEvent.id))
+    .limit(100);
+  const claims = events.length
+    ? await db.select().from(claim).where(inArray(claim.id, [...new Set(events.map((e) => e.claimId))]))
+    : [];
+  const byId = new Map(claims.map((row) => [row.id, row]));
+  return c.json(toJson({ decisions: events.map((event) => ({ ...event, claim: byId.get(event.claimId) ?? null })) }));
+});
+
 /// Running totals for the public transparency page.
 app.get("/v1/stats", async (c) => {
   const [row] = await db.select().from(poolStats).where(eq(poolStats.id, "global"));
