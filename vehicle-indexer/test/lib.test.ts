@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_TOTALS, addTotals, claimStatusName, policyStatus } from "../src/lib";
+import { EMPTY_TOTALS, addTotals, claimStatusName, parseClaimStatuses, policyStatus } from "../src/lib";
 
 describe("claimStatusName", () => {
   it("maps the contract's enum values", () => {
@@ -35,5 +35,14 @@ describe("addTotals", () => {
     expect(twice.premiumsCollected).toBe(432_670_100n);
     expect(twice.claimsPaid).toBe(0);
     expect(EMPTY_TOTALS.policiesSold).toBe(0);
+  });
+});
+
+describe("parseClaimStatuses", () => {
+  it("accepts a comma-separated list of known statuses", () => {
+    expect(parseClaimStatuses("Submitted,UnderReview")).toEqual(["Submitted", "UnderReview"]);
+    expect(parseClaimStatuses(undefined)).toBeUndefined();
+    expect(parseClaimStatuses("")).toBeUndefined();
+    expect(parseClaimStatuses("Submitted,Lost")).toBeNull();
   });
 });

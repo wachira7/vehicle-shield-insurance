@@ -41,3 +41,20 @@ export function onchainAssessorCheck({
     return value;
   };
 }
+
+/// The on-chain facts the API needs about a policy: which vehicle it covers and when it began.
+export type PolicyReader = (policyId: bigint) => Promise<{ vehicleId: string; startTime: Date } | null>;
+
+export function onchainPolicyReader({ rpcUrl, insuranceCore }: { rpcUrl: string; insuranceCore: string }): PolicyReader {
+  const client = createPublicClient({ transport: http(rpcUrl) });
+  return async (policyId) => {
+    const policy = await client.readContract({
+      address: insuranceCore as `0x${string}`,
+      abi: InsuranceCoreAbi,
+      functionName: "getPolicy",
+      args: [policyId],
+    });
+    if (policy.startTime === 0n) return null;
+    return { vehicleId: policy.vehicleId, startTime: new Date(Number(policy.startTime) * 1000) };
+  };
+}

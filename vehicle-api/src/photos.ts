@@ -10,11 +10,14 @@ import { vehicleIdFor } from "@vehicle-shield/protocol";
 import { requireAuth, type AuthEnv } from "./auth";
 import { decryptBlob, encryptBlob } from "./crypto";
 import { schema, type Database } from "./db";
+import { inspectImage, type CaptureMetadata } from "./forensics";
 import type { BlobStore } from "./storage";
 
 export const PHOTO_VIEWS = ["front", "back", "left", "right", "interior", "odometer"] as const;
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 export const MAX_EVIDENCE_PHOTOS = 10;
+/// Claim photo roles: at least one "overview" shows the whole car with its plate readable.
+export const EVIDENCE_VIEWS = ["overview", "damage"] as const;
 
 export interface PhotoDeps {
   db: Database;
@@ -49,22 +52,52 @@ async function readImage(file: unknown): Promise<{ bytes: Uint8Array; contentTyp
   return { bytes, contentType };
 }
 
-/// Encrypts and stores one photo; returns the row to insert once the caller's records exist.
+/// Capture metadata the web app read from the original file before resizing it (optional).
+const reportedMetadata = z
+  .object({
+    capturedAt: z.string().datetime({ offset: true }).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lon: z.number().min(-180).max(180).optional(),
+    camera: z.string().trim().max(80).optional(),
+  })
+  .transform(({ capturedAt, ...rest }): CaptureMetadata => ({ ...rest, capturedAt: capturedAt ? new Date(capturedAt) : undefined }));
+
+/// Parses a `meta` form field; anything malformed is ignored rather than failing the upload.
+export function parseReportedMetadata(value: unknown): CaptureMetadata | undefined {
+  if (typeof value !== "string" || value.length > 2_000) return undefined;
+  try {
+    const parsed = reportedMetadata.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/// Inspects, encrypts and stores one photo; returns the row to insert once the caller's records exist.
 async function uploadPhoto(
   deps: PhotoDeps,
   image: { bytes: Uint8Array; contentType: string },
   row: Pick<PhotoRow, "owner" | "purpose" | "view" | "vehicleSubmissionId" | "evidenceId">,
+  reported?: CaptureMetadata,
 ): Promise<PhotoRow> {
   const id = randomUUID();
-  const stored = await deps.store.put(`photos/${id}`, encryptBlob(deps.photoKey, image.bytes, id), "application/octet-stream");
+  const inspection = await inspectImage(image.bytes, image.contentType, reported);
+  const bytes = inspection.bytes;
+  const stored = await deps.store.put(`photos/${id}`, encryptBlob(deps.photoKey, bytes, id), "application/octet-stream");
   return {
     ...row,
     id,
     storageKey: stored.key,
     cid: stored.cid,
-    sha256: createHash("sha256").update(image.bytes).digest("hex"),
+    sha256: createHash("sha256").update(bytes).digest("hex"),
     contentType: image.contentType,
-    size: image.bytes.length,
+    size: bytes.length,
+    phash: inspection.phash,
+    capturedAt: inspection.metadata.capturedAt ?? null,
+    gpsLat: inspection.metadata.lat ?? null,
+    gpsLon: inspection.metadata.lon ?? null,
+    camera: inspection.metadata.camera ?? null,
+    metadataSource: inspection.metadataSource,
   };
 }
 
@@ -177,12 +210,12 @@ export function vehicleRoutes(deps: PhotoDeps) {
     const image = await readImage(body.file);
     if ("error" in image) return c.json({ error: "invalid_file", reason: image.error }, 400);
 
-    const row = await uploadPhoto(deps, image, {
-      owner,
-      purpose: "vehicle",
-      view: view.data,
-      vehicleSubmissionId: vehicle.id,
-    });
+    const row = await uploadPhoto(
+      deps,
+      image,
+      { owner, purpose: "vehicle", view: view.data, vehicleSubmissionId: vehicle.id },
+      parseReportedMetadata(body.meta),
+    );
     await db.transaction(async (tx) => {
       await tx
         .delete(schema.photos)
@@ -199,8 +232,9 @@ export function evidenceRoutes(deps: PhotoDeps) {
   const app = new Hono<AuthEnv>();
   app.use("*", requireAuth(deps.sessionSecret, deps.now));
 
-  /// Upload a claim's photos (multipart: `policyId`, one or more `files`). Returns the
-  /// evidence URI to pass to InsuranceCore.submitClaim.
+  /// Upload a claim's photos (multipart: `policyId`, `description`, one or more `files`, and per
+  /// file a `views` entry, "overview" or "damage", plus an optional `meta` JSON entry). At least
+  /// one overview is required. Returns the evidence URI to pass to InsuranceCore.submitClaim.
   app.post(
     "/",
     bodyLimit({
@@ -219,6 +253,15 @@ export function evidenceRoutes(deps: PhotoDeps) {
         return c.json({ error: "invalid_files", reason: `Attach 1 to ${MAX_EVIDENCE_PHOTOS} photos` }, 400);
       }
 
+      const views = z.array(z.enum(EVIDENCE_VIEWS)).length(files.length).safeParse(([] as unknown[]).concat(body.views ?? []));
+      if (!views.success) {
+        return c.json({ error: "invalid_views", reason: `Give each photo a view: ${EVIDENCE_VIEWS.join(" or ")}` }, 400);
+      }
+      if (!views.data.includes("overview")) {
+        return c.json({ error: "overview_required", reason: "Add one photo of the whole car with the number plate readable" }, 400);
+      }
+      const meta = ([] as unknown[]).concat(body.meta ?? []);
+
       const images: { bytes: Uint8Array; contentType: string }[] = [];
       for (const [index, file] of files.entries()) {
         const image = await readImage(file);
@@ -228,15 +271,22 @@ export function evidenceRoutes(deps: PhotoDeps) {
 
       const evidenceId = randomUUID();
       const rows: PhotoRow[] = [];
-      for (const image of images) {
-        rows.push(await uploadPhoto(deps, image, { owner, purpose: "claim", evidenceId }));
+      for (const [index, image] of images.entries()) {
+        rows.push(
+          await uploadPhoto(
+            deps,
+            image,
+            { owner, purpose: "claim", view: views.data[index], evidenceId },
+            meta.length === files.length ? parseReportedMetadata(meta[index]) : undefined,
+          ),
+        );
       }
       // The manifest holds no images or personal data, so it is stored unencrypted.
       const manifest = {
         version: 1,
         policyId: policyId.data,
         createdAt: deps.now().toISOString(),
-        photos: rows.map(({ cid, sha256, contentType, size }) => ({ cid, sha256, contentType, size })),
+        photos: rows.map(({ cid, sha256, contentType, size, view }) => ({ cid, sha256, contentType, size, view })),
       };
       const stored = await deps.store.put(
         `evidence/${evidenceId}.json`,
@@ -252,6 +302,7 @@ export function evidenceRoutes(deps: PhotoDeps) {
           manifestCid: stored.cid,
           uri: stored.uri,
           description: description.data || null,
+          createdAt: deps.now(),
         });
         await tx.insert(schema.photos).values(rows);
       });
@@ -269,7 +320,7 @@ export function evidenceRoutes(deps: PhotoDeps) {
       .where(and(eq(schema.claimEvidence.uri, uri), eq(schema.claimEvidence.owner, c.get("address"))));
     if (!evidence) return c.json({ error: "not_found" }, 404);
     const photos = await deps.db
-      .select({ id: schema.photos.id, contentType: schema.photos.contentType })
+      .select({ id: schema.photos.id, view: schema.photos.view, contentType: schema.photos.contentType })
       .from(schema.photos)
       .where(eq(schema.photos.evidenceId, evidence.id))
       .orderBy(asc(schema.photos.createdAt));

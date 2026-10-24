@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { client, desc, asc, eq, graphql, inArray, replaceBigInts } from "ponder";
+import { and, client, desc, asc, eq, graphql, inArray, replaceBigInts } from "ponder";
 import { db } from "ponder:api";
 import schema, { claim, claimEvent, policy, poolStats } from "ponder:schema";
-import { isAddress } from "viem";
-import { EMPTY_TOTALS, policyStatus } from "../lib";
+import { isAddress, isHex } from "viem";
+import { EMPTY_TOTALS, parseClaimStatuses, policyStatus } from "../lib";
 
 const app = new Hono();
 
@@ -20,14 +20,22 @@ const isId = (value: string) => /^\d{1,30}$/.test(value);
 type PolicyRow = typeof policy.$inferSelect;
 const withStatus = (row: PolicyRow) => ({ ...row, status: policyStatus(row, nowSeconds()) });
 
-/// Policies held by an address (newest first), or the latest policies when no holder is given.
+/// Policies, newest first: held by `?holder=`, covering `?vehicleId=` (the on-chain vehicle
+/// hash), or the latest policies when neither is given.
 app.get("/v1/policies", async (c) => {
   const holder = c.req.query("holder");
+  const vehicleId = c.req.query("vehicleId");
   if (holder !== undefined && !isAddress(holder)) return c.json({ error: "invalid_holder" }, 400);
+  if (vehicleId !== undefined && !(isHex(vehicleId) && vehicleId.length === 66)) return c.json({ error: "invalid_vehicle_id" }, 400);
   const rows = await db
     .select()
     .from(policy)
-    .where(holder ? eq(policy.holder, holder.toLowerCase() as `0x${string}`) : undefined)
+    .where(
+      and(
+        holder ? eq(policy.holder, holder.toLowerCase() as `0x${string}`) : undefined,
+        vehicleId ? eq(policy.vehicleId, vehicleId.toLowerCase() as `0x${string}`) : undefined,
+      ),
+    )
     .orderBy(desc(policy.id))
     .limit(100);
   return c.json(toJson({ policies: rows.map(withStatus) }));
@@ -54,6 +62,19 @@ app.get("/v1/policies/:id", async (c) => {
       claims: claims.map((x) => ({ ...x, timeline: events.filter((e) => e.claimId === x.id) })),
     }),
   );
+});
+
+/// Claims oldest first, optionally by `?status=Submitted,UnderReview`: the assessor's queue.
+app.get("/v1/claims", async (c) => {
+  const statuses = parseClaimStatuses(c.req.query("status"));
+  if (statuses === null) return c.json({ error: "invalid_status" }, 400);
+  const rows = await db
+    .select()
+    .from(claim)
+    .where(statuses ? inArray(claim.status, statuses) : undefined)
+    .orderBy(asc(claim.id))
+    .limit(200);
+  return c.json(toJson({ claims: rows }));
 });
 
 app.get("/v1/claims/:id", async (c) => {

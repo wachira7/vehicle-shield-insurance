@@ -10,16 +10,18 @@ import { Steps } from "@/components/steps";
 import { useToast } from "@/components/toast";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
-import { uploadClaimEvidence } from "@/lib/api";
+import { uploadClaimEvidence, type EvidencePhoto } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, insuranceCore, technicalDetails } from "@/lib/contracts";
 import { formatUsd, formatUsdcUnits } from "@/lib/format";
-import { prepareImage } from "@/lib/images";
+import { prepareImage, readCaptureMetadata } from "@/lib/images";
 import { usePolicies } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { connectedWalletClient } from "@/lib/wallet-client";
 
-const MAX_PHOTOS = 10;
+const MAX_DAMAGE_PHOTOS = 9; // plus the overview: the API takes up to 10
+
+type Picked = { file: File; preview: string };
 
 type Phase =
   | { kind: "editing" }
@@ -40,10 +42,12 @@ export function ClaimForm() {
   const [policyId, setPolicyId] = useState<string | null>(params.get("policy"));
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
+  const [overview, setOverview] = useState<Picked | null>(null);
+  const [photos, setPhotos] = useState<Picked[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: "editing" });
   const [touched, setTouched] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const overviewInput = useRef<HTMLInputElement>(null);
   // The last upload, so a retry after a wallet problem doesn't upload the same photos again.
   const uploaded = useRef<{ key: string; evidenceUri: string } | null>(null);
   const wallet = useWalletCheck();
@@ -67,25 +71,30 @@ export function ClaimForm() {
       : remaining.data !== undefined && amountUnits > remaining.data
         ? `That's more than the ${formatUsdcUnits(remaining.data, { whole: true })} of cover left`
         : undefined,
-    photos: photos.length === 0 ? "Add at least one photo of the damage" : undefined,
+    overview: !overview ? "Add a photo of the whole car with the number plate readable" : undefined,
+    photos: photos.length === 0 ? "Add at least one close-up of the damage" : undefined,
   };
   const busy = ["uploading", "wallet", "confirming"].includes(phase.kind);
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;
-    const added = [...files].slice(0, MAX_PHOTOS - photos.length).map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    const added = [...files].slice(0, MAX_DAMAGE_PHOTOS - photos.length).map((file) => ({ file, preview: URL.createObjectURL(file) }));
     setPhotos((current) => [...current, ...added]);
   };
 
   const submit = async () => {
     setTouched(true);
-    if (!policyId || errors.amount || errors.photos || !wallet.ready) return;
+    if (!policyId || !overview || errors.amount || errors.overview || errors.photos || !wallet.ready) return;
     try {
-      const key = JSON.stringify([policyId, description, photos.map((photo) => photo.preview)]);
+      const picked = [{ ...overview, view: "overview" as const }, ...photos.map((photo) => ({ ...photo, view: "damage" as const }))];
+      const key = JSON.stringify([policyId, description, picked.map((photo) => photo.preview)]);
       let evidenceUri = uploaded.current?.key === key ? uploaded.current.evidenceUri : undefined;
       if (!evidenceUri) {
         setPhase({ kind: "uploading", progress: 0 });
-        const prepared = await Promise.all(photos.map((photo) => prepareImage(photo.file)));
+        // Capture details are read from the originals: resizing drops them.
+        const prepared: EvidencePhoto[] = await Promise.all(
+          picked.map(async (photo) => ({ view: photo.view, meta: await readCaptureMetadata(photo.file), file: await prepareImage(photo.file) })),
+        );
         ({ evidenceUri } = await uploadClaimEvidence(token!, policyId, description, prepared, (progress) =>
           setPhase({ kind: "uploading", progress }),
         ));
@@ -124,7 +133,7 @@ export function ClaimForm() {
     );
   }
 
-  const step = phase.kind === "editing" || phase.kind === "error" ? (photos.length ? 1 : 0) : 2;
+  const step = phase.kind === "editing" || phase.kind === "error" ? (photos.length || overview ? 1 : 0) : 2;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -202,8 +211,60 @@ export function ClaimForm() {
         </div>
 
         <div>
-          <p className="text-sm font-medium">Photos of the damage</p>
-          <p className="text-xs text-ink-faint">Close-ups of each damaged area, plus one showing the whole car. Up to {MAX_PHOTOS}.</p>
+          <p className="text-sm font-medium">The whole car</p>
+          <p className="text-xs text-ink-faint">Step back so the whole car and its number plate are in one photo. It shows the assessor this is your insured car.</p>
+          <div className="mt-3 flex items-start gap-4">
+            {overview ? (
+              <div className="animate-step-in relative aspect-[4/3] w-44 overflow-hidden rounded-xl border border-line">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
+                <img src={overview.preview} alt="Whole car" className="h-full w-full object-cover" />
+                {!busy && (
+                  <button
+                    type="button"
+                    aria-label="Remove the whole-car photo"
+                    onClick={() => setOverview(null)}
+                    className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-bg/80 text-sm"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => overviewInput.current?.click()}
+                className={`grid aspect-[4/3] w-44 place-items-center rounded-xl border border-dashed text-center text-xs text-ink-faint hover:border-action ${touched && errors.overview ? "border-danger" : "border-line"}`}
+              >
+                <span>
+                  <svg viewBox="0 0 24 24" className="mx-auto size-7" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                    <path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3z" strokeLinejoin="round" />
+                    <rect x="9" y="17" width="6" height="2" rx="0.5" />
+                  </svg>
+                  Whole car + plate
+                </span>
+              </button>
+            )}
+          </div>
+          {touched && errors.overview && <p className="mt-1.5 text-xs text-danger">{errors.overview}</p>}
+          <input
+            ref={overviewInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            capture="environment"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) setOverview({ file, preview: URL.createObjectURL(file) });
+            }}
+          />
+        </div>
+
+        <div>
+          <p className="text-sm font-medium">Close-ups of the damage</p>
+          <p className="text-xs text-ink-faint">One photo per damaged area, close enough to see it clearly. Up to {MAX_DAMAGE_PHOTOS}.</p>
           <ul className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
             {photos.map((photo, index) => (
               <li key={photo.preview} className="animate-step-in relative aspect-square overflow-hidden rounded-xl border border-line">
@@ -221,7 +282,7 @@ export function ClaimForm() {
                 )}
               </li>
             ))}
-            {photos.length < MAX_PHOTOS && !busy && (
+            {photos.length < MAX_DAMAGE_PHOTOS && !busy && (
               <li>
                 <button
                   type="button"

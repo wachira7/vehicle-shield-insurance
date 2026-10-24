@@ -2,18 +2,35 @@
 // them, and fetch a claim's evidence photos. Claim decisions themselves are on-chain
 // transactions the assessor signs with their own wallet; the API never holds that key.
 import { Hono } from "hono";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { parseUnits } from "ethers";
 import { z } from "zod";
 import { requireAuth, type AuthEnv } from "./auth";
 import { decryptBlob } from "./crypto";
 import { schema } from "./db";
 import { describeVehicle, type PhotoDeps } from "./photos";
-import type { RoleCheck } from "./roles";
+import { photoFlags, summaryFlags, type MatchContext, type PhotoFacts } from "./review";
+import type { PolicyReader, RoleCheck } from "./roles";
 
 export interface AssessorDeps extends PhotoDeps {
   isAssessor: RoleCheck;
+  readPolicy: PolicyReader;
 }
+
+const photoFacts = {
+  id: schema.photos.id,
+  owner: schema.photos.owner,
+  purpose: schema.photos.purpose,
+  view: schema.photos.view,
+  sha256: schema.photos.sha256,
+  phash: schema.photos.phash,
+  capturedAt: schema.photos.capturedAt,
+  gpsLat: schema.photos.gpsLat,
+  gpsLon: schema.photos.gpsLon,
+  camera: schema.photos.camera,
+  evidenceId: schema.photos.evidenceId,
+  vehicleSubmissionId: schema.photos.vehicleSubmissionId,
+};
 
 const usdc = z
   .union([z.number(), z.string()])
@@ -51,6 +68,9 @@ export function assessorRoutes(deps: AssessorDeps) {
     return vehicle;
   }
 
+  /// Lets the web app show the console only to assessors.
+  app.get("/me", (c) => c.json({ address: c.get("address"), assessor: true }));
+
   /// The review queue, oldest first. `?status=` picks pending (default), verified or rejected.
   app.get("/vehicles", async (c) => {
     const status = z.enum(["pending", "verified", "rejected"]).safeParse(c.req.query("status") ?? "pending");
@@ -64,10 +84,35 @@ export function assessorRoutes(deps: AssessorDeps) {
     return c.json({ vehicles: await Promise.all(rows.map((row) => describeVehicle(db, row))) });
   });
 
+  /// One vehicle, with capture metadata and warning signs for each of its photos.
   app.get("/vehicles/:id", async (c) => {
     const vehicle = await findVehicle(c.req.param("id"));
     if (!vehicle) return c.json({ error: "not_found" }, 404);
-    return c.json(await describeVehicle(db, vehicle));
+    const photos = await db
+      .select({ ...photoFacts, createdAt: schema.photos.createdAt })
+      .from(schema.photos)
+      .where(eq(schema.photos.vehicleSubmissionId, vehicle.id));
+    const candidates = await duplicateCandidates(
+      or(isNull(schema.photos.vehicleSubmissionId), ne(schema.photos.vehicleSubmissionId, vehicle.id))!,
+      photos.map((p) => p.sha256),
+    );
+    const contexts = await matchContexts(candidates);
+    const describeMatch = (match: PhotoFacts): MatchContext => {
+      const context = contexts.get(match.id)!;
+      return "sameOwner" in context ? { ...context, sameOwner: match.owner === vehicle.owner } : context;
+    };
+    const checks = Object.fromEntries(
+      photos.map((photo) => [
+        photo.id,
+        {
+          capturedAt: photo.capturedAt,
+          gps: photo.gpsLat !== null && photo.gpsLon !== null ? { lat: photo.gpsLat, lon: photo.gpsLon } : null,
+          camera: photo.camera,
+          flags: photoFlags({ photo, uploadedAt: photo.createdAt, candidates, describeMatch }),
+        },
+      ]),
+    );
+    return c.json({ ...(await describeVehicle(db, vehicle)), checks });
   });
 
   app.post("/vehicles/:id/verify", async (c) => {
@@ -158,6 +203,104 @@ export function assessorRoutes(deps: AssessorDeps) {
       .orderBy(asc(schema.photos.createdAt));
     return c.json({ ...evidence, policyId: evidence.policyId.toString(), photos });
   });
+
+  /// Everything needed to judge a claim, by its on-chain evidence URI: the description, the
+  /// claimant's contact details, the covered car with its verification photos, and each claim
+  /// photo with its capture metadata and warning signs.
+  app.get("/claims/review", async (c) => {
+    const uri = c.req.query("uri");
+    if (!uri) return c.json({ error: "invalid_request", reason: "Pass ?uri=<evidence URI>" }, 400);
+    const [evidence] = await db.select().from(schema.claimEvidence).where(eq(schema.claimEvidence.uri, uri));
+    if (!evidence) return c.json({ error: "not_found" }, 404);
+
+    const [photos, [claimant], policy] = await Promise.all([
+      db.select(photoFacts).from(schema.photos).where(eq(schema.photos.evidenceId, evidence.id)).orderBy(asc(schema.photos.createdAt)),
+      db.select().from(schema.profiles).where(eq(schema.profiles.address, evidence.owner)),
+      deps.readPolicy(evidence.policyId).catch(() => null),
+    ]);
+
+    // The covered car: the verified record for the policy's vehicle id, else the latest one.
+    const [vehicle] = policy
+      ? await db
+          .select()
+          .from(schema.vehicles)
+          .where(sql`lower(${schema.vehicles.vehicleId}) = ${policy.vehicleId.toLowerCase()}`)
+          .orderBy(sql`${schema.vehicles.status} = 'verified' desc`, desc(schema.vehicles.createdAt))
+          .limit(1)
+      : [];
+
+    const candidates = await duplicateCandidates(
+      or(isNull(schema.photos.evidenceId), ne(schema.photos.evidenceId, evidence.id))!,
+      photos.map((p) => p.sha256),
+    );
+    const contexts = await matchContexts(candidates, vehicle?.id);
+    const describeMatch = (match: PhotoFacts): MatchContext => {
+      const context = contexts.get(match.id)!;
+      return "sameOwner" in context ? { ...context, sameOwner: match.owner === evidence.owner } : context;
+    };
+
+    return c.json({
+      evidence: {
+        uri: evidence.uri,
+        policyId: evidence.policyId.toString(),
+        owner: evidence.owner,
+        description: evidence.description,
+        createdAt: evidence.createdAt,
+      },
+      claimant: claimant ? { fullName: claimant.fullName, email: claimant.email, phone: claimant.phone } : null,
+      policy: policy ? { vehicleId: policy.vehicleId, startTime: policy.startTime } : null,
+      vehicle: vehicle ? await describeVehicle(db, vehicle) : null,
+      photos: photos.map((photo) => ({
+        id: photo.id,
+        view: photo.view,
+        capturedAt: photo.capturedAt,
+        gps: photo.gpsLat !== null && photo.gpsLon !== null ? { lat: photo.gpsLat, lon: photo.gpsLon } : null,
+        camera: photo.camera,
+        flags: photoFlags({ photo, uploadedAt: evidence.createdAt, policyStart: policy?.startTime, candidates, describeMatch }),
+      })),
+      flags: summaryFlags(photos),
+    });
+  });
+
+  /// Stored photos that could match the ones under review: any with a fingerprint, or with one
+  /// of the given hashes. A linear scan is fine at this scale; past ~100k photos, move
+  /// fingerprints to an index (e.g. a BK-tree or pgvector).
+  function duplicateCandidates(outside: SQL, hashes: string[]) {
+    return db
+      .select(photoFacts)
+      .from(schema.photos)
+      .where(and(outside, or(isNotNull(schema.photos.phash), inArray(schema.photos.sha256, hashes.concat("")))));
+  }
+
+  /// Where each candidate photo came from: this car's verification set, another vehicle, or
+  /// another claim. `sameOwner` is filled in per claim by the caller.
+  async function matchContexts(candidates: PhotoFacts[], coveredVehicleId?: string) {
+    const vehicleIds = [...new Set(candidates.map((p) => p.vehicleSubmissionId).filter((id): id is string => Boolean(id)))];
+    const evidenceIds = [...new Set(candidates.map((p) => p.evidenceId).filter((id): id is string => Boolean(id)))];
+    const [plates, policies] = await Promise.all([
+      vehicleIds.length
+        ? db.select({ id: schema.vehicles.id, plate: schema.vehicles.plate }).from(schema.vehicles).where(inArray(schema.vehicles.id, vehicleIds))
+        : [],
+      evidenceIds.length
+        ? db
+            .select({ id: schema.claimEvidence.id, policyId: schema.claimEvidence.policyId })
+            .from(schema.claimEvidence)
+            .where(inArray(schema.claimEvidence.id, evidenceIds))
+        : [],
+    ]);
+    const plateOf = new Map(plates.map((row) => [row.id, row.plate]));
+    const policyOf = new Map(policies.map((row) => [row.id, row.policyId.toString()]));
+    return new Map(
+      candidates.map((photo): [string, MatchContext] => [
+        photo.id,
+        photo.vehicleSubmissionId === coveredVehicleId && coveredVehicleId
+          ? { kind: "this-car-verification", view: photo.view }
+          : photo.vehicleSubmissionId
+            ? { kind: "other-vehicle", plate: plateOf.get(photo.vehicleSubmissionId) ?? "unknown", sameOwner: false }
+            : { kind: "other-claim", policyId: policyOf.get(photo.evidenceId!) ?? "unknown", sameOwner: false },
+      ]),
+    );
+  }
 
   return app;
 }

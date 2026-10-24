@@ -83,6 +83,15 @@ async function main() {
     check(`claim ${id} timeline ends at its status`, indexed.timeline.at(-1)?.status, status);
   }
 
+  // The list endpoints agree with the per-item ones.
+  const { claims: open } = await get("/v1/claims?status=Submitted,UnderReview");
+  check("open claims count", open.length, (statusCounts.Submitted ?? 0) + (statusCounts.UnderReview ?? 0));
+  if (policyCount > 0n) {
+    const first = await get("/v1/policies/1");
+    const { policies: forVehicle } = await get(`/v1/policies?vehicleId=${first.vehicleId}`);
+    check("policies by vehicle include policy 1", forVehicle.some((p: { id: string }) => p.id === "1"), true);
+  }
+
   const stats = await get("/v1/stats");
   check("stats policiesSold", stats.policiesSold, policyCount);
   check("stats claimsSubmitted", stats.claimsSubmitted, claimCount);

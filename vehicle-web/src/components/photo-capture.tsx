@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError, PHOTO_VIEWS, fetchPhotoUrl, uploadVehiclePhoto, type PhotoView, type Vehicle } from "@/lib/api";
-import { prepareImage } from "@/lib/images";
+import { ApiError, PHOTO_VIEWS, uploadVehiclePhoto, type PhotoView, type Vehicle } from "@/lib/api";
+import { prepareImage, readCaptureMetadata } from "@/lib/images";
 import { VIEW_GUIDE } from "@/lib/photo-views";
 import { useSession } from "@/lib/session";
+import { useSecurePhoto } from "./secure-photo";
 import { useToast } from "./toast";
 
 type TileState =
@@ -35,9 +36,14 @@ export function PhotoCapture({ vehicle, onChange }: { vehicle: Vehicle; onChange
     const preview = URL.createObjectURL(file);
     setTiles((all) => ({ ...all, [view]: { kind: "uploading", preview, progress: 0 } }));
     try {
-      const prepared = await prepareImage(file);
-      const result = await uploadVehiclePhoto(token!, vehicle.id, view, prepared, (progress) =>
-        setTiles((all) => ({ ...all, [view]: { kind: "uploading", preview, progress } })),
+      const [prepared, meta] = await Promise.all([prepareImage(file), readCaptureMetadata(file)]);
+      const result = await uploadVehiclePhoto(
+        token!,
+        vehicle.id,
+        view,
+        prepared,
+        (progress) => setTiles((all) => ({ ...all, [view]: { kind: "uploading", preview, progress } })),
+        meta,
       );
       setTiles((all) => ({ ...all, [view]: { kind: "done", preview } }));
       onChange?.(result.vehicle);
@@ -68,7 +74,7 @@ export function PhotoCapture({ vehicle, onChange }: { vehicle: Vehicle; onChange
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {PHOTO_VIEWS.map((view) => (
           <li key={view}>
-            <PhotoTile view={view} state={tiles[view]} editable={editable} token={token!} onFile={(file) => upload(view, file)} />
+            <PhotoTile view={view} state={tiles[view]} editable={editable} onFile={(file) => upload(view, file)} />
           </li>
         ))}
       </ul>
@@ -80,17 +86,15 @@ function PhotoTile({
   view,
   state,
   editable,
-  token,
   onFile,
 }: {
   view: PhotoView;
   state: TileState;
   editable: boolean;
-  token: string;
   onFile: (file: File) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const storedUrl = useStoredPhoto(state.kind === "stored" ? state.photoId : undefined, token);
+  const storedUrl = useSecurePhoto(state.kind === "stored" ? state.photoId : undefined) ?? undefined;
   const image = state.kind === "stored" ? storedUrl : state.kind === "empty" ? undefined : state.preview;
   const guide = VIEW_GUIDE[view];
   const busy = state.kind === "uploading";
@@ -152,27 +156,6 @@ function PhotoTile({
       />
     </div>
   );
-}
-
-/// Loads an already-uploaded (encrypted) photo through the API for display.
-function useStoredPhoto(photoId: string | undefined, token: string) {
-  const [url, setUrl] = useState<string>();
-  useEffect(() => {
-    if (!photoId) return;
-    let objectUrl: string | undefined;
-    let cancelled = false;
-    fetchPhotoUrl(token, photoId)
-      .then((value) => {
-        objectUrl = value;
-        if (!cancelled) setUrl(value);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [photoId, token]);
-  return url;
 }
 
 function ProgressRing({ value }: { value: number }) {

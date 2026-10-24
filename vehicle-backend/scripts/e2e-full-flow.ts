@@ -106,6 +106,8 @@ async function main() {
   evidenceForm.set("policyId", policyId.toString());
   evidenceForm.append("files", photo());
   evidenceForm.append("files", photo());
+  evidenceForm.append("views", "overview");
+  evidenceForm.append("views", "damage");
   const evidence = await call("POST", "/v1/claims/evidence", { auth: ownerToken, form: evidenceForm });
   const claimId = await core.nextClaimId();
   await (await core.connect(owner).submitClaim(policyId, USDC(2_000), evidence.evidenceUri)).wait();

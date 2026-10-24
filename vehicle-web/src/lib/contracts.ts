@@ -64,6 +64,8 @@ const REVERT_MESSAGES: Record<string, string> = {
   EvidenceRequired: "Add at least one photo of the damage.",
   InvalidClaimAmount: "Enter an amount greater than zero.",
   InvalidClaimStatus: "This claim has already moved on. Refresh to see its latest status.",
+  NothingToPay: "After the deductible there's nothing to pay. Approve a higher amount, or decline the claim.",
+  AccessControlUnauthorizedAccount: "This wallet doesn't hold the assessor role on the contract.",
 };
 
 type ErrorLike = { name?: string; message?: string; code?: number; data?: { errorName?: string }; cause?: unknown };
