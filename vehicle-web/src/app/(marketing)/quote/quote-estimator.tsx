@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { Card } from "@/components/ui";
+import { ButtonLink, Card } from "@/components/ui";
 import { estimateQuote, type EstimateInput, type EstimateResult } from "@/lib/api";
 import { describeMultiplier, formatUsd, perMonth } from "@/lib/format";
+import { saveLastQuote } from "@/lib/last-quote";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DURATIONS = [
@@ -78,6 +79,18 @@ export function QuoteEstimator() {
   const [loading, setLoading] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((current) => ({ ...current, [key]: value }));
+
+  // Remember the car, so adding it after signing in starts from the same details.
+  useEffect(() => {
+    saveLastQuote({
+      year: form.year,
+      marketValue: form.marketValue,
+      mileageKm: form.mileageKm,
+      condition: form.condition,
+      accidents: form.accidents,
+      usage: form.usage,
+    });
+  }, [form]);
 
   // Reprice shortly after the last change; a newer change cancels the request in flight.
   useEffect(() => {
@@ -268,6 +281,12 @@ function PriceCard({
             ))}
           </ul>
         </div>
+      )}
+
+      {result?.kind === "priced" && (
+        <ButtonLink href="/dashboard/vehicles/new" className="w-full">
+          Get covered: verify your car
+        </ButtonLink>
       )}
 
       <p className="border-t border-line pt-5 text-xs text-ink-faint">

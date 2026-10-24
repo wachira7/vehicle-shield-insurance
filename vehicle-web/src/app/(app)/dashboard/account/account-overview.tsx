@@ -28,35 +28,21 @@ export function AccountOverview() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10 sm:px-6 sm:py-14">
+    <div className="space-y-6">
       <div className="animate-step-in">
         <h1 className="text-3xl font-semibold tracking-tight">
-          {profile?.fullName ? `Welcome, ${profile.fullName.split(" ")[0]}` : "Your account"}
+          Account
         </h1>
         <p className="mt-1 text-ink-muted">
           Signed in {method ? `with ${method}` : "with your wallet"}.
         </p>
       </div>
 
-      <Card className="animate-step-in">
-        <h2 className="font-semibold">Get covered</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Check your price, then verify your car with six photos. An assessor confirms the details before cover
-          starts.
-        </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href="/quote">Get a quote</ButtonLink>
-          <span className="inline-flex items-center rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-faint">
-            Car verification opens next
-          </span>
-        </div>
-      </Card>
-
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Your details</h2>
-            <ButtonLink href="/register?next=/account" variant="ghost" className="px-0 py-0">
+            <ButtonLink href="/register?next=/dashboard/account" variant="ghost" className="px-0 py-0">
               Edit
             </ButtonLink>
           </div>

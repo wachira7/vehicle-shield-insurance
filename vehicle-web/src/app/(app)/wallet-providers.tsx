@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiProvider, type Config } from "wagmi";
+import { Toaster } from "@/components/toast";
 import { SessionProvider } from "@/lib/session";
 import { appKitOptions, projectId, wagmiAdapter } from "@/lib/wallet";
 
@@ -25,7 +26,9 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig as Config}>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <Toaster>{children}</Toaster>
+        </SessionProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
