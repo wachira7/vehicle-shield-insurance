@@ -5,6 +5,14 @@ import { InsuranceCoreAbi } from "@vehicle-shield/protocol";
 
 export type RoleCheck = (address: `0x${string}`) => Promise<boolean>;
 
+/// Verifies plain wallet signatures and smart-contract wallets alike: ERC-1271 for deployed
+/// accounts, ERC-6492 for ones not deployed yet (viem's verifyMessage handles all three).
+export function rpcSignatureCheck(rpcUrl: string) {
+  const client = createPublicClient({ transport: http(rpcUrl) });
+  return ({ address, message, signature }: { address: `0x${string}`; message: string; signature: `0x${string}` }) =>
+    client.verifyMessage({ address, message, signature });
+}
+
 export const ASSESSOR_ROLE = keccak256(toHex("ASSESSOR_ROLE"));
 const CACHE_MS = 60_000;
 

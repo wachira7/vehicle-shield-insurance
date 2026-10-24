@@ -69,3 +69,14 @@ export const photos = pgTable(
   },
   (t) => [index("photo_vehicle_idx").on(t.vehicleSubmissionId), index("photo_evidence_idx").on(t.evidenceId)],
 );
+
+/// Contact details collected after a wallet's first sign-in (registration). Needed to reach
+/// policyholders about claims and renewals; never stored on-chain.
+export const profiles = pgTable("profile", {
+  address: text("address").primaryKey(), // checksummed
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

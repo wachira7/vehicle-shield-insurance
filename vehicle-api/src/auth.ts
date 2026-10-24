@@ -12,12 +12,19 @@ import { schema, type Database } from "./db";
 const NONCE_TTL_MS = 10 * 60 * 1000;
 export const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
+export type SignatureCheck = (args: { address: `0x${string}`; message: string; signature: Hex }) => Promise<boolean>;
+
+/// Plain wallet (EOA) signatures only, checked locally.
+export const eoaSignatureCheck: SignatureCheck = (args) => verifyMessage(args).catch(() => false);
+
 export interface AuthOptions {
   db: Database;
   sessionSecret: string;
   siweDomain: string; // host the frontend is served from, e.g. "app.vehicleshield.xyz"
   chainId: number;
   now: () => Date;
+  // Smart-contract wallets (social-login and other smart accounts) need an RPC-backed check.
+  verifySignature?: SignatureCheck;
 }
 
 export type AuthEnv = { Variables: { address: `0x${string}` } };
@@ -29,7 +36,7 @@ const verifyRequest = z.object({
 
 const unauthorized = (reason: string) => ({ error: "unauthorized", reason });
 
-export function authRoutes({ db, sessionSecret, siweDomain, chainId, now }: AuthOptions) {
+export function authRoutes({ db, sessionSecret, siweDomain, chainId, now, verifySignature = eoaSignatureCheck }: AuthOptions) {
   const app = new Hono();
 
   app.get("/nonce", async (c) => {
@@ -59,10 +66,7 @@ export function authRoutes({ db, sessionSecret, siweDomain, chainId, now }: Auth
       .returning();
     if (!used) return c.json(unauthorized("unknown_or_expired_nonce"), 401);
 
-    // EOA signatures only for now; smart-contract wallets (ERC-1271) need an RPC check.
-    const valid = await verifyMessage({ address: fields.address, message, signature: signature as Hex }).catch(
-      () => false,
-    );
+    const valid = await verifySignature({ address: fields.address, message, signature: signature as Hex }).catch(() => false);
     if (!valid) return c.json(unauthorized("bad_signature"), 401);
 
     const address = getAddress(fields.address);

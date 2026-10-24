@@ -86,3 +86,55 @@ export function poolBalanceUnits(stats: PoolStats): bigint {
     BigInt(stats.poolWithdrawn)
   );
 }
+
+// ---------------------------------------------------------------------------
+// Sign-in and profile (need the session token from Sign-In with Ethereum)
+// ---------------------------------------------------------------------------
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public body: Record<string, unknown>,
+  ) {
+    super(String(body.reason ?? body.error ?? `Request failed (${status})`));
+  }
+}
+
+async function request<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
+  const { token, headers, ...rest } = init;
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...rest,
+      headers: {
+        ...(rest.body && typeof rest.body === "string" ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+    });
+  } catch {
+    throw new ApiError(0, { error: "unreachable" });
+  }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new ApiError(response.status, body);
+  return body as T;
+}
+
+export const getNonce = () => request<{ nonce: string }>("/v1/auth/nonce");
+
+export const verifySignIn = (message: string, signature: string) =>
+  request<{ token: string; address: `0x${string}`; expiresAt: string }>("/v1/auth/verify", {
+    method: "POST",
+    body: JSON.stringify({ message, signature }),
+  });
+
+export interface Profile {
+  fullName: string;
+  email: string;
+  phone: string | null;
+}
+
+export const getProfile = (token: string) => request<{ address: string; profile: Profile | null }>("/v1/profile", { token });
+
+export const saveProfile = (token: string, profile: { fullName: string; email: string; phone?: string }) =>
+  request<{ address: string; profile: Profile }>("/v1/profile", { method: "PUT", token, body: JSON.stringify(profile) });

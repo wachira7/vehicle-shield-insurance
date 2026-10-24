@@ -11,10 +11,11 @@ import {
   type Deployment,
   type PricingResult,
 } from "@vehicle-shield/protocol";
-import { authRoutes } from "./auth";
+import { authRoutes, type SignatureCheck } from "./auth";
 import type { Database } from "./db";
 import { assessorRoutes } from "./assessor";
 import { evidenceRoutes, photoRoutes, vehicleRoutes } from "./photos";
+import { profileRoutes } from "./profile";
 import type { RoleCheck } from "./roles";
 import type { BlobStore } from "./storage";
 import type { VehicleVerifier } from "./verification";
@@ -30,6 +31,7 @@ export interface AppOptions {
   store: BlobStore;
   photoKey: Buffer;
   isAssessor: RoleCheck;
+  verifySignature?: SignatureCheck;
   corsOrigins?: string[];
   now?: () => Date;
 }
@@ -84,6 +86,7 @@ export function createApp({
   store,
   photoKey,
   isAssessor,
+  verifySignature,
   corsOrigins = [],
   now = () => new Date(),
 }: AppOptions) {
@@ -92,7 +95,7 @@ export function createApp({
 
   app.use(
     "/v1/*",
-    cors({ origin: corsOrigins, allowMethods: ["GET", "POST"], allowHeaders: ["Content-Type", "Authorization"] }),
+    cors({ origin: corsOrigins, allowMethods: ["GET", "POST", "PUT"], allowHeaders: ["Content-Type", "Authorization"] }),
   );
 
   app.onError((error, c) => {
@@ -110,7 +113,8 @@ export function createApp({
     }),
   );
 
-  app.route("/v1/auth", authRoutes({ db, sessionSecret, siweDomain, chainId: deployment.chainId, now }));
+  app.route("/v1/auth", authRoutes({ db, sessionSecret, siweDomain, chainId: deployment.chainId, now, verifySignature }));
+  app.route("/v1/profile", profileRoutes({ db, sessionSecret, now }));
   const photoDeps = { db, store, photoKey, vehicleIdSalt, sessionSecret, now };
   app.route("/v1/vehicles", vehicleRoutes(photoDeps));
   app.route("/v1/claims/evidence", evidenceRoutes(photoDeps));
