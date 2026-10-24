@@ -14,7 +14,7 @@ import { WalletNotice, useWalletCheck } from "@/components/wallet-check";
 import { fetchClaim, fetchPolicyDetail, getClaimReview, type CheckedPhoto, type ClaimRecord, type ClaimReview } from "@/lib/api";
 import { chain } from "@/lib/chain";
 import { describeTxError, explorerTx, insuranceCore, technicalDetails } from "@/lib/contracts";
-import { collapseMissingMetadata, describeFlag, describeMatch, describeSummaryFlag, worstTone } from "@/lib/flags";
+import { claimWarnings, collapseMissingMetadata, describeFlag, describeMatch, worstTone } from "@/lib/flags";
 import { formatUsdcUnits } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { VIEW_GUIDE } from "@/lib/photo-views";
@@ -47,7 +47,7 @@ export default function ClaimReviewPage({ params }: { params: Promise<{ id: stri
     return (
       <Card className="py-12 text-center">
         <p className="font-semibold">Claim #{id} wasn&apos;t found</p>
-        <Link href="/dashboard/assessor" className="mt-3 inline-block text-sm text-action hover:underline">
+        <Link href="/assessor/claims" className="mt-3 inline-block text-sm text-action hover:underline">
           Back to the queue
         </Link>
       </Card>
@@ -56,18 +56,14 @@ export default function ClaimReviewPage({ params }: { params: Promise<{ id: stri
 
   const collapsed = collapseMissingMetadata(review.data?.photos ?? []);
   const data = review.data && { ...review.data, photos: collapsed.photos };
-  const summary = [
-    ...(data?.flags.map(describeSummaryFlag) ?? []),
-    ...(collapsed.allMissing ? [{ ...describeFlag({ kind: "no-metadata" }, "claim"), title: "No capture details on any photo" }] : []),
-  ];
-  const allPhotoFlags = data?.photos.flatMap((photo) => photo.flags.map((flag) => describeFlag(flag, "claim", data.evidence.policyId))) ?? [];
-  const tone = worstTone([...summary, ...allPhotoFlags].filter((flag) => flag.tone !== "info"));
+  const warnings = review.data ? claimWarnings(review.data) : [];
+  const tone = worstTone(warnings.filter((flag) => flag.tone !== "info"));
   const openPhoto = (photoId: string) => setOpen(lightbox.findIndex((item) => item.id === photoId));
 
   return (
     <div className="space-y-6">
-      <Link href="/dashboard/assessor" className="text-sm text-ink-muted hover:text-ink">
-        ← Queue
+      <Link href="/assessor/claims" className="text-sm text-ink-muted hover:text-ink">
+        ← Claims
       </Link>
       <header className="animate-step-in flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -98,9 +94,9 @@ export default function ClaimReviewPage({ params }: { params: Promise<{ id: stri
                     ? "The photos are new, unique and consistent. Still compare them with the insured car below."
                     : "These are prompts, not verdicts. Each photo's details are listed under it."}
                 </p>
-                {(summary.length > 0 || tone !== null) && (
+                {warnings.length > 0 && (
                   <div className="mt-4">
-                    <FlagList flags={dedupe([...summary, ...allPhotoFlags.filter((flag) => flag.tone !== "info")])} />
+                    <FlagList flags={warnings} />
                   </div>
                 )}
               </Card>
@@ -179,11 +175,6 @@ export default function ClaimReviewPage({ params }: { params: Promise<{ id: stri
       )}
     </div>
   );
-}
-
-function dedupe<T extends { title: string; detail: string }>(items: T[]): T[] {
-  const seen = new Set<string>();
-  return items.filter((item) => !seen.has(item.title + item.detail) && seen.add(item.title + item.detail));
 }
 
 /// "Overview", or "Damage n" counting only the damage photos.

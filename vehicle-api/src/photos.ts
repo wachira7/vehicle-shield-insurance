@@ -7,7 +7,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { formatUnits, parseUnits } from "ethers";
 import { z } from "zod";
 import { vehicleIdFor } from "@vehicle-shield/protocol";
-import { requireAuth, type AuthEnv } from "./auth";
+import { customersOnly, requireAuth, type AuthEnv } from "./auth";
 import { decryptBlob, encryptBlob } from "./crypto";
 import { schema, type Database } from "./db";
 import { inspectImage, type CaptureMetadata } from "./forensics";
@@ -20,6 +20,8 @@ export const MAX_EVIDENCE_PHOTOS = 10;
 export const EVIDENCE_VIEWS = ["overview", "damage"] as const;
 
 export interface PhotoDeps {
+  /// Whether an address is staff (an assessor); staff can't submit vehicles or claim evidence.
+  isStaff?: (address: `0x${string}`) => Promise<boolean>;
   db: Database;
   store: BlobStore;
   photoKey: Buffer;
@@ -148,6 +150,7 @@ export function vehicleRoutes(deps: PhotoDeps) {
   const { db } = deps;
   const app = new Hono<AuthEnv>();
   app.use("*", requireAuth(deps.sessionSecret, deps.now));
+  const staffCheck = customersOnly(deps.isStaff ?? (async () => false));
   const describe = (vehicle: typeof schema.vehicles.$inferSelect) => describeVehicle(db, vehicle);
 
   async function ownVehicle(id: string, owner: string) {
@@ -160,7 +163,7 @@ export function vehicleRoutes(deps: PhotoDeps) {
   }
 
   /// Submit a vehicle for verification (or update a pending or rejected submission).
-  app.post("/", async (c) => {
+  app.post("/", staffCheck, async (c) => {
     const parsed = vehicleRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: "invalid_request", issues: parsed.error.issues }, 400);
     const { plate, marketValueUsdc, ...details } = parsed.data;
@@ -196,7 +199,7 @@ export function vehicleRoutes(deps: PhotoDeps) {
   });
 
   /// Upload one of the required views (multipart: `view`, `file`). Replaces an earlier upload.
-  app.post("/:id/photos", tooLarge, async (c) => {
+  app.post("/:id/photos", staffCheck, tooLarge, async (c) => {
     const owner = c.get("address");
     const vehicle = await ownVehicle(c.req.param("id"), owner);
     if (!vehicle) return c.json({ error: "not_found" }, 404);
@@ -237,6 +240,7 @@ export function evidenceRoutes(deps: PhotoDeps) {
   /// one overview is required. Returns the evidence URI to pass to InsuranceCore.submitClaim.
   app.post(
     "/",
+    customersOnly(deps.isStaff ?? (async () => false)),
     bodyLimit({
       maxSize: MAX_EVIDENCE_PHOTOS * MAX_PHOTO_BYTES + 64 * 1024,
       onError: (c) => c.json({ error: "too_large", reason: "Up to 10 photos of 10 MB each" }, 413),

@@ -81,6 +81,20 @@ export function authRoutes({ db, sessionSecret, siweDomain, chainId, now, verify
 }
 
 /// Rejects requests without a valid session token and exposes the signed-in address.
+export const STAFF_ACCOUNT = {
+  error: "staff_account",
+  reason: "Assessor accounts can't hold insurance. Use a separate customer account for your own cover.",
+} as const;
+
+/// Keeps assessor wallets out of customer actions: whoever approves claims must not be able to
+/// insure a car or claim on it from the same account. Runs after requireAuth.
+export function customersOnly(isStaff: (address: `0x${string}`) => Promise<boolean>): MiddlewareHandler<AuthEnv> {
+  return async (c, next) => {
+    if (await isStaff(c.get("address"))) return c.json(STAFF_ACCOUNT, 403);
+    await next();
+  };
+}
+
 export function requireAuth(sessionSecret: string, now: () => Date): MiddlewareHandler<AuthEnv> {
   return async (c, next) => {
     const header = c.req.header("Authorization") ?? "";

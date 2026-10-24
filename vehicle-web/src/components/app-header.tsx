@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useIsAssessor } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { Logo } from "./logo";
 import { ButtonLink } from "./ui";
@@ -33,6 +34,7 @@ function AccountMenu() {
   const { status, address, profile, signOut } = useSession();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const staff = useIsAssessor().data === true;
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -85,19 +87,24 @@ function AccountMenu() {
         }`}
       >
         <div className="px-3 py-2">
-          <p className="truncate text-sm font-medium">{profile?.fullName ?? "Your account"}</p>
+          <p className="flex items-center gap-2 truncate text-sm font-medium">
+            {profile?.fullName ?? "Your account"}
+            {staff && <span className="rounded-full bg-action/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-action">Assessor</span>}
+          </p>
           <p className="font-mono text-xs text-ink-faint">{shortAddress(address!)}</p>
         </div>
         <div className="my-1 h-px bg-line" />
-        <Link role="menuitem" href="/dashboard" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
-          Dashboard
+        <Link role="menuitem" href={staff ? "/assessor" : "/dashboard"} className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
+          {staff ? "Assessor console" : "Dashboard"}
         </Link>
-        <Link role="menuitem" href="/dashboard/account" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
+        <Link role="menuitem" href={staff ? "/assessor/account" : "/dashboard/account"} className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
           Account
         </Link>
-        <Link role="menuitem" href="/quote" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
-          Get a quote
-        </Link>
+        {!staff && (
+          <Link role="menuitem" href="/quote" className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
+            Get a quote
+          </Link>
+        )}
         <button
           role="menuitem"
           type="button"

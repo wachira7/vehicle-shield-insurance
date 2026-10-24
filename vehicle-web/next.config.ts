@@ -6,9 +6,13 @@ const nextConfig: NextConfig = {
   // The shared protocol package ships TypeScript source.
   transpilePackages: ["@vehicle-shield/protocol"],
   images: { formats: ["image/avif", "image/webp"] },
-  // Account moved into the dashboard.
   async redirects() {
-    return [{ source: "/account", destination: "/dashboard/account", permanent: true }];
+    return [
+      // Account moved into the dashboard.
+      { source: "/account", destination: "/dashboard/account", permanent: true },
+      // The assessor console moved out of the customer dashboard into its own workspace.
+      { source: "/dashboard/assessor/:path*", destination: "/assessor/:path*", permanent: true },
+    ];
   },
 };
 

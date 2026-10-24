@@ -71,6 +71,7 @@ ponder.on("InsuranceCore:ClaimStatusChanged", async ({ event, context }) => {
     status: name,
     timestamp,
     txHash: event.transaction.hash,
+    actor: event.transaction.from,
   });
 });
 

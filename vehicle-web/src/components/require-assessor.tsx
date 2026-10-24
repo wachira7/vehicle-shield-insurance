@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Card } from "@/components/ui";
+import { ButtonLink, Card } from "@/components/ui";
 import { useIsAssessor } from "@/lib/queries";
 
 /// Shows its children only to wallets holding ASSESSOR_ROLE. The API enforces the same rule;
@@ -21,11 +21,14 @@ export function RequireAssessor({ children }: { children: ReactNode }) {
   }
   if (!assessor.data) {
     return (
-      <Card className="py-12 text-center">
+      <Card className="mx-auto max-w-xl py-12 text-center">
         <p className="text-lg font-semibold">For assessors only</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-ink-muted">
-          This wallet doesn&apos;t hold the assessor role. Sign in with an assessor&apos;s wallet to review vehicles and claims.
+          This account doesn&apos;t hold the assessor role. Sign in with your staff account to review vehicles and claims.
         </p>
+        <ButtonLink href="/dashboard" variant="secondary" className="mt-6">
+          Go to your dashboard
+        </ButtonLink>
       </Card>
     );
   }

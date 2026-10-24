@@ -56,7 +56,7 @@ export default function VehicleReviewPage({ params }: { params: Promise<{ id: st
     return (
       <Card className="py-12 text-center">
         <p className="font-semibold">This vehicle wasn&apos;t found</p>
-        <Link href="/dashboard/assessor" className="mt-3 inline-block text-sm text-action hover:underline">
+        <Link href="/assessor/vehicles" className="mt-3 inline-block text-sm text-action hover:underline">
           Back to the queue
         </Link>
       </Card>
@@ -95,7 +95,7 @@ export default function VehicleReviewPage({ params }: { params: Promise<{ id: st
         toast(`${v.plate} sent back to the owner`);
       }
       await queryClient.invalidateQueries({ queryKey: ["assessor"] });
-      router.push("/dashboard/assessor");
+      router.push("/assessor/vehicles");
     } catch (err) {
       const body = err instanceof ApiError ? err.body : {};
       setError(
@@ -113,8 +113,8 @@ export default function VehicleReviewPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-6">
-      <Link href="/dashboard/assessor" className="text-sm text-ink-muted hover:text-ink">
-        ← Queue
+      <Link href="/assessor/vehicles" className="text-sm text-ink-muted hover:text-ink">
+        ← Vehicles
       </Link>
       <header className="animate-step-in flex flex-wrap items-start justify-between gap-4">
         <div>

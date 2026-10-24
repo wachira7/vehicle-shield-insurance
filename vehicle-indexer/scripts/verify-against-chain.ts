@@ -92,6 +92,15 @@ async function main() {
     check("policies by vehicle include policy 1", forVehicle.some((p: { id: string }) => p.id === "1"), true);
   }
 
+  // Every approval or decline is listed once, with the wallet that made it.
+  const { decisions } = await get("/v1/decisions");
+  check(
+    "decisions count",
+    decisions.length,
+    (statusCounts.Approved ?? 0) + (statusCounts.Paid ?? 0) + (statusCounts.Rejected ?? 0),
+  );
+  check("decisions name who made them", decisions.every((d: { actor?: string }) => /^0x[0-9a-f]{40}$/.test(d.actor ?? "")), true);
+
   const stats = await get("/v1/stats");
   check("stats policiesSold", stats.policiesSold, policyCount);
   check("stats claimsSubmitted", stats.claimsSubmitted, claimCount);

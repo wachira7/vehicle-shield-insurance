@@ -55,8 +55,11 @@ export const claimEvent = onchainTable(
     status: claimStatus("status").notNull(),
     timestamp: t.bigint().notNull(),
     txHash: t.hex().notNull(),
+    // Who sent the transaction: the claimant for Submitted, the assessor for review decisions,
+    // anyone for Paid (payClaim is open to all).
+    actor: t.hex().notNull(),
   }),
-  (table) => ({ claimIdx: index().on(table.claimId) }),
+  (table) => ({ claimIdx: index().on(table.claimId), actorIdx: index().on(table.actor) }),
 );
 
 /// Single row ("global") of running totals for the transparency page.
