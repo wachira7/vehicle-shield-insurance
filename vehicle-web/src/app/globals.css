@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/* Fintech dark: deep navy surfaces, one action color, high-contrast text. */
+@theme {
+  --color-bg: #0a1020;
+  --color-surface: #111a2e;
+  --color-surface-2: #16223a;
+  --color-line: #22304d;
+  --color-ink: #e8edf6;
+  --color-ink-muted: #94a3bd;
+  --color-ink-faint: #64748f;
+  --color-action: #2dd4a7;
+  --color-action-ink: #04261c;
+  --color-warn: #f5b84b;
+  --color-danger: #f47174;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scroll reveal, both directions: fades in on entering the screen and out on leaving.
+   Hidden only when JavaScript is running, so content never disappears. Leaving is quicker
+   than arriving, and the stagger delay only applies on the way in. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 350ms ease-out,
+    transform 350ms ease-out;
+}
+.js .reveal[data-shown] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+/* Hero hand-off: as the page scrolls down, hero content fades and drifts up.
+   Native scroll-driven animation, so no JavaScript; unsupported browsers stay static. */
+@supports (animation-timeline: scroll()) {
+  @keyframes hero-exit {
+    to {
+      opacity: 0;
+      transform: translateY(-48px) scale(0.98);
+    }
+  }
+  .hero-exit {
+    animation: hero-exit linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 70vh;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .animate-float,
+  .hero-exit {
+    animation: none;
+  }
+}
