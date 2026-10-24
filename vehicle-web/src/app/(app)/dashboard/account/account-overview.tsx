@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPhone } from "@/lib/phone";
 import { useState } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { shortAddress } from "@/components/app-header";
@@ -58,7 +59,7 @@ export function AccountOverview() {
               </div>
               <div>
                 <dt className="text-ink-faint">Phone</dt>
-                <dd>{profile.phone ?? "Not added"}</dd>
+                <dd>{profile.phone ? formatPhone(profile.phone) : "Not added"}</dd>
               </div>
             </dl>
           ) : (

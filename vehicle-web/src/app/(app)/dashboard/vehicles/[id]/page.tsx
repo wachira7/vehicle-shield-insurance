@@ -10,12 +10,15 @@ import { ButtonLink, Card } from "@/components/ui";
 import { VehicleForm, toVehicleInput, type VehicleFormValues } from "@/components/vehicle-form";
 import { submitVehicle } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
-import { useVehicles } from "@/lib/queries";
+import { latestPolicyFor } from "@/lib/next-step";
+import { usePolicies, useVehicles } from "@/lib/queries";
+import { renewHref } from "@/lib/renewal";
 import { useSession } from "@/lib/session";
 
 export default function VehiclePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const vehicles = useVehicles();
+  const policies = usePolicies();
   const { token } = useSession();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -33,6 +36,9 @@ export default function VehiclePage({ params }: { params: Promise<{ id: string }
       </Card>
     );
   }
+
+  const latest = latestPolicyFor(policies.data ?? [], vehicle.vehicleId);
+  const covered = latest && (latest.status === "active" || latest.status === "upcoming");
 
   const resubmit = async (values: VehicleFormValues) => {
     setBusy(true);
@@ -75,9 +81,15 @@ export default function VehiclePage({ params }: { params: Promise<{ id: string }
             {vehicle.reviewNote ? `Assessor's note: ${vehicle.reviewNote}. ` : ""}Your price uses these confirmed
             details.
           </p>
-          <ButtonLink href={`/dashboard/vehicles/${vehicle.id}/buy`} className="mt-4">
-            Buy cover
-          </ButtonLink>
+          {covered ? (
+            <ButtonLink href={`/dashboard/policies/${latest.id}`} variant="secondary" className="mt-4">
+              Covered by policy #{latest.id}
+            </ButtonLink>
+          ) : (
+            <ButtonLink href={latest ? renewHref(vehicle.id, latest.id) : `/dashboard/vehicles/${vehicle.id}/buy`} className="mt-4">
+              {latest ? "Renew cover" : "Buy cover"}
+            </ButtonLink>
+          )}
         </Card>
       )}
 

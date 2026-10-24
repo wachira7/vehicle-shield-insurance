@@ -16,6 +16,7 @@ import { chain } from "@/lib/chain";
 import { describeTxError, explorerTx, insuranceCore, technicalDetails } from "@/lib/contracts";
 import { collapseMissingMetadata, describeFlag, describeMatch, describeSummaryFlag, worstTone } from "@/lib/flags";
 import { formatUsdcUnits } from "@/lib/format";
+import { formatPhone } from "@/lib/phone";
 import { VIEW_GUIDE } from "@/lib/photo-views";
 import { useSession } from "@/lib/session";
 import { connectedWalletClient } from "@/lib/wallet-client";
@@ -109,7 +110,7 @@ export default function ClaimReviewPage({ params }: { params: Promise<{ id: stri
                 <p className="mt-2 whitespace-pre-line text-sm text-ink-muted">{data.evidence.description || "No description given."}</p>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                   <Fact label="Claimant" value={data.claimant?.fullName ?? "Not registered"} />
-                  <Fact label="Contact" value={[data.claimant?.phone, data.claimant?.email].filter(Boolean).join(" · ") || "—"} />
+                  <Fact label="Contact" value={[data.claimant?.phone && formatPhone(data.claimant.phone), data.claimant?.email].filter(Boolean).join(" · ") || "—"} />
                   <Fact label="Wallet" value={<span className="font-mono text-xs">{data.evidence.owner}</span>} />
                   <Fact label="Cover started" value={data.policy ? dateTime(data.policy.startTime) : "Unknown"} />
                 </dl>

@@ -30,7 +30,7 @@ const policy = (status: PolicySummary["status"]): PolicySummary => ({
   deductible: "1",
   paidOut: "0",
   startTime: "0",
-  endTime: "0",
+  endTime: "9999999999", // far future, so active fixtures aren't in the renewal window
   status,
 });
 
@@ -58,8 +58,16 @@ describe("nextStep", () => {
     );
   });
 
-  it("ignores policies that aren't active", () => {
-    expect(nextStep([vehicle({ status: "verified" })], [policy("expired")]).kind).toBe("buy-cover");
+  it("offers renewal, not a fresh purchase, when the car's cover has lapsed", () => {
+    expect(nextStep([vehicle({ status: "verified" })], [policy("expired")])).toMatchObject({ kind: "renew", policy: { id: "1" } });
+    expect(nextStep([vehicle({ status: "verified", vehicleId: "0xother" })], [policy("expired")]).kind).toBe("buy-cover");
+  });
+
+  it("reminds about renewal in the last 30 days of cover", () => {
+    const now = 1_800_000_000_000;
+    const ending = (days: number) => ({ ...policy("active"), endTime: String(now / 1000 + days * 86_400) });
+    expect(nextStep([vehicle({ status: "verified" })], [ending(10)], [], now).kind).toBe("renew-soon");
+    expect(nextStep([vehicle({ status: "verified" })], [ending(60)], [], now).kind).toBe("covered");
   });
 });
 

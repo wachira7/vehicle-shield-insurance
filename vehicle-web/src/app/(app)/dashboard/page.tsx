@@ -7,6 +7,7 @@ import { ButtonLink, Card } from "@/components/ui";
 import { formatUsdcUnits } from "@/lib/format";
 import { daysLeft, nextStep, type NextStep } from "@/lib/next-step";
 import { useClaims, usePolicies, useVehicles } from "@/lib/queries";
+import { renewHref } from "@/lib/renewal";
 import { useSession } from "@/lib/session";
 
 export default function DashboardHome() {
@@ -79,7 +80,7 @@ export default function DashboardHome() {
             <ul className="space-y-3">
               {policies.data.slice(0, 3).map((policy) => (
                 <li key={policy.id}>
-                  <Link href={`/dashboard/policies`} className="block">
+                  <Link href={`/dashboard/policies/${policy.id}`} className="block">
                     <Card className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-2">
                       <div>
                         <p className="font-medium">Policy #{policy.id}</p>
@@ -137,13 +138,29 @@ function NextStepCard({ step }: { step: NextStep }) {
           : "",
       action: step.kind === "collect-payout" ? { href: `/dashboard/claims/${step.claim.id}`, label: "Collect payout" } : undefined,
     },
+    "renew-soon": {
+      title: "Your cover ends soon",
+      body:
+        step.kind === "renew-soon"
+          ? `Policy #${step.policy.id} ends in ${daysLeft(step.policy.endTime)} days. Renew from the day it ends to stay covered.`
+          : "",
+      action: step.kind === "renew-soon" ? { href: `/dashboard/policies/${step.policy.id}`, label: "See renewal" } : undefined,
+    },
+    renew: {
+      title: "Renew your cover",
+      body:
+        step.kind === "renew"
+          ? `Your ${step.vehicle.make} ${step.vehicle.model} isn't covered since policy #${step.policy.id} ${step.policy.status === "cancelled" ? "was cancelled" : "ended"}. Renew with the same terms in a minute.`
+          : "",
+      action: step.kind === "renew" ? { href: renewHref(step.vehicle.id, step.policy.id), label: "Renew cover" } : undefined,
+    },
     covered: {
       title: "You're covered",
       body:
         step.kind === "covered"
           ? `Policy #${step.policy.id}: ${formatUsdcUnits(step.policy.coverage, { whole: true })} cover, ${daysLeft(step.policy.endTime)} days left.`
           : "",
-      action: { href: "/dashboard/policies", label: "View policy" },
+      action: step.kind === "covered" ? { href: `/dashboard/policies/${step.policy.id}`, label: "Proof of cover" } : undefined,
     },
   };
   const { title, body, action } = content[step.kind];

@@ -31,3 +31,21 @@ export function formatCountdown(msLeft: number): string {
   const total = Math.max(0, Math.ceil(msLeft / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
+
+/// Renewal reminders start this many days before cover ends.
+export const RENEWAL_WINDOW_DAYS = 30;
+
+/// A previous policy's terms (in whole dollars and days), adjusted to what's valid for the car
+/// today: its verified value may have changed, and the deductible must be one of the options.
+export function renewalTerms(previous: { cover: number; deductible: number; durationDays: number }, vehicleValue: number) {
+  const bounds = coverBounds(vehicleValue);
+  const cover = Math.min(bounds.max, Math.max(bounds.min, Math.round(previous.cover / 100) * 100));
+  const options = deductibleOptions(cover);
+  const deductible = options.reduce((best, option) =>
+    Math.abs(option - previous.deductible) < Math.abs(best - previous.deductible) ? option : best,
+  );
+  const durationDays = DURATIONS.reduce((best, option) =>
+    Math.abs(option.days - previous.durationDays) < Math.abs(best.days - previous.durationDays) ? option : best,
+  ).days;
+  return { cover, deductible, durationDays };
+}

@@ -14,6 +14,9 @@ export function SiteHeader() {
           <Link href="/#transparency" className="hidden px-2 text-sm text-ink-muted hover:text-ink sm:block">
             Transparency
           </Link>
+          <Link href="/check" className="hidden px-2 text-sm text-ink-muted hover:text-ink sm:block">
+            Check cover
+          </Link>
           <Link href="/signin" className="px-2 text-sm font-medium text-ink-muted hover:text-ink">
             Sign in
           </Link>
