@@ -21,8 +21,8 @@ jobs:
     name: Compile, type-check, test, coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: yarn
@@ -35,7 +35,7 @@ jobs:
         env:
           REPORT_GAS: "true"
       - run: yarn coverage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: vehicle-backend/coverage
@@ -44,13 +44,13 @@ jobs:
     name: Static analysis (Slither)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: yarn
           cache-dependency-path: yarn.lock
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: yarn install --frozen-lockfile
         working-directory: .
       - run: yarn compile
