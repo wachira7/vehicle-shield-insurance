@@ -17,6 +17,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # PGlite 0.5 can't open data directories made by 0.3 (checked against real local data),
+      # so moving up means exporting and re-importing local databases. Do it deliberately.
+      - dependency-name: "@electric-sql/pglite"
+        update-types: ["version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
