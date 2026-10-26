@@ -6,7 +6,7 @@ import { StaffNav } from "@/components/staff-nav";
 export default function AssessorLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireSession>
-      <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-8 sm:px-6 lg:pb-16">
+      <div className="mx-auto w-full max-w-[90rem] px-4 pb-28 pt-8 sm:px-6 lg:px-8 lg:pb-16">
         <RequireAssessor>
           <div className="flex gap-10">
             <StaffNav />

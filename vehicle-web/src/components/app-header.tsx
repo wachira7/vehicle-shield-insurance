@@ -12,7 +12,7 @@ import { ButtonLink } from "./ui";
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-line/60 bg-bg/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[90rem] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Logo />
         <div className="flex items-center gap-2">
           <NotificationBell />
@@ -79,7 +79,7 @@ function AccountMenu() {
         <span className="grid size-7 place-items-center rounded-lg bg-action/15 text-xs font-semibold text-action">
           {profile?.fullName ? initials(profile.fullName) : "●"}
         </span>
-        <span className="max-w-32 truncate font-medium">{name}</span>
+        <span className="hidden max-w-32 truncate font-medium sm:inline">{name}</span>
         <span aria-hidden className={`text-ink-faint transition-transform ${open ? "rotate-180" : ""}`}>
           ▾
         </span>
