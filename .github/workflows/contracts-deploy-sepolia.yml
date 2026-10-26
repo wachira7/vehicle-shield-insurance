@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: sepolia
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: yarn
@@ -41,7 +41,7 @@ jobs:
           PAUSER_ADDRESS: ${{ vars.PAUSER_ADDRESS }}
           USDC_ADDRESS: ${{ vars.USDC_ADDRESS }}
           SEED_POOL_USDC: ${{ vars.SEED_POOL_USDC }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sepolia-deployment
           path: packages/protocol/deployments/sepolia.json
