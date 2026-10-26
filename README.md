@@ -77,6 +77,22 @@ through pull requests. Sepolia deploys are manual and need approval (`contracts-
 The API and indexer run on Render and the database on Neon, both on free tiers in Frankfurt;
 see [docs/hosting.md](docs/hosting.md) and `render.yaml`.
 
+## Security
+
+- **Secrets** live only in `.env` files (never committed) and the hosts' secret settings. Hosted
+  services start through `scripts/run-redacted.mjs`, which masks API keys, database passwords
+  and tokens in their logs.
+- **Photos** are encrypted with AES-256-GCM before storage; EXIF location data is stripped.
+- **API:** Sign-In with Ethereum sessions, per-client rate limits (stricter for sign-in, writes
+  and uploads), protective headers, and roles checked on-chain.
+- **Web:** a Content-Security-Policy (scripts only from the site, no framing), HSTS and related
+  headers, set in `vehicle-web/next.config.ts`.
+- **Scanning:** Slither on the contracts, CodeQL on the TypeScript, and Dependabot for
+  dependencies, on every pull request or weekly.
+
+Found a vulnerability? Please report it privately to the maintainers rather than opening a
+public issue.
+
 ## Before going live
 
 - Independent contract audit; move admin roles to a multisig; revoke the deployer's roles.

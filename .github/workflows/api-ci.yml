@@ -3,7 +3,7 @@ name: API CI
 on:
   push:
     branches: [main]
-    paths: ["vehicle-api/**", "packages/**", "yarn.lock", ".github/workflows/api-ci.yml"]
+    paths: ["vehicle-api/**", "packages/**", "scripts/**", "yarn.lock", ".github/workflows/api-ci.yml"]
   # Every PR runs this workflow: its checks are required, and a required check
   # that never runs would block the merge.
   pull_request:
@@ -28,6 +28,8 @@ jobs:
       - run: yarn workspace @vehicle-shield/protocol test
       - run: yarn workspace vehicle-shield-api typecheck
       - run: yarn workspace vehicle-shield-api test
+      - name: Log redaction (hosted services' launcher)
+        run: node --test scripts/redact.test.mjs
       - name: Boot the API under Node's real module loader
         run: yarn workspace vehicle-shield-api smoke
 

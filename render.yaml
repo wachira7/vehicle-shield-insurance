@@ -10,7 +10,8 @@ services:
     region: frankfurt
     plan: free
     buildCommand: yarn install --frozen-lockfile
-    startCommand: yarn workspace vehicle-shield-api start
+    # run-redacted masks API keys and passwords in everything the service prints.
+    startCommand: node scripts/run-redacted.mjs yarn workspace vehicle-shield-api start
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -63,7 +64,7 @@ services:
     buildCommand: yarn install --frozen-lockfile
     # Each deploy indexes into a fresh schema named after its commit, as Ponder requires when
     # the indexing code changes; re-indexing this contract's history takes a few minutes.
-    startCommand: yarn workspace vehicle-shield-indexer start --port $PORT --schema idx_$(echo $RENDER_GIT_COMMIT | cut -c1-12)
+    startCommand: node scripts/run-redacted.mjs yarn workspace vehicle-shield-indexer start --port $PORT --schema idx_$(echo $RENDER_GIT_COMMIT | cut -c1-12)
     healthCheckPath: /health
     autoDeploy: true
     envVars:

@@ -1,0 +1,23 @@
+# Weekly checks for outdated or vulnerable dependencies; security fixes open PRs right away.
+# Minor and patch updates are grouped into one PR per ecosystem to keep the noise down.
+version: 2
+updates:
+  - package-ecosystem: npm # yarn workspaces, one lockfile at the root
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Africa/Nairobi
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Africa/Nairobi
+    groups:
+      actions:
+        patterns: ["*"]
