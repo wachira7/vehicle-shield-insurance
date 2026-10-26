@@ -12,13 +12,15 @@ export function readDeployment() {
 }
 
 /// The contract a role lives on: PolicyNFT for MINTER_ROLE or when CONTRACT=PolicyNFT, otherwise InsuranceCore.
-export async function roleTarget(role: string, contractName = process.env.CONTRACT ?? "InsuranceCore") {
+/// The names returned come from the lists above, never straight from the environment.
+export async function roleTarget(requested: string, contractName = process.env.CONTRACT) {
   const deployment = readDeployment();
-  const name = role === "MINTER_ROLE" ? "PolicyNFT" : contractName;
+  const name = requested === "MINTER_ROLE" || contractName === "PolicyNFT" ? "PolicyNFT" : "InsuranceCore";
   const roles = name === "PolicyNFT" ? NFT_ROLES : CORE_ROLES;
-  if (!roles.includes(role)) throw new Error(`${name} roles are ${roles.join(", ")}`);
+  const role = roles.find((known) => known === requested);
+  if (!role) throw new Error(`${name} roles are ${roles.join(", ")}`);
   const contract = await ethers.getContractAt(name as "InsuranceCore", deployment.contracts[name]);
-  return { name, contract, roleId: (await contract.getFunction(role)()) as string };
+  return { name, role, contract, roleId: (await contract.getFunction(role)()) as string };
 }
 
 /// Every account holding a role now, rebuilt from RoleGranted and RoleRevoked events since the

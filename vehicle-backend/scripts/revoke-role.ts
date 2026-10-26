@@ -5,11 +5,11 @@ import { ethers } from "hardhat";
 import { readDeployment, roleHolders, roleTarget } from "./lib/roles";
 
 async function main() {
-  const { ROLE: role, ACCOUNT: account } = process.env;
-  if (!role) throw new Error("Set ROLE, e.g. QUOTE_SIGNER_ROLE");
-  if (!account || !ethers.isAddress(account)) throw new Error("Set ACCOUNT to the address losing the role");
+  if (!process.env.ROLE) throw new Error("Set ROLE, e.g. QUOTE_SIGNER_ROLE");
+  if (!ethers.isAddress(process.env.ACCOUNT)) throw new Error("Set ACCOUNT to the address losing the role");
+  const account = ethers.getAddress(process.env.ACCOUNT);
 
-  const { name, contract, roleId } = await roleTarget(role);
+  const { name, role, contract, roleId } = await roleTarget(process.env.ROLE);
   if (!(await contract.hasRole(roleId, account))) {
     console.log(`${account} doesn't have ${role} on ${name}`);
     return;
