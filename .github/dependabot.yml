@@ -1,5 +1,7 @@
 # Weekly checks for outdated or vulnerable dependencies; security fixes open PRs right away.
 # Minor and patch updates are grouped into one PR per ecosystem to keep the noise down.
+# Major upgrades (e.g. TypeScript 5 → 7, zod 3 → 4) are skipped: they need planned, tested
+# migrations, so we do them deliberately. Vulnerabilities still show under Security → Dependabot.
 version: 2
 updates:
   - package-ecosystem: npm # yarn workspaces, one lockfile at the root
@@ -12,6 +14,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -21,3 +26,6 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
