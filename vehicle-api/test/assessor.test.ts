@@ -37,6 +37,7 @@ const app = () =>
     photoKey: randomBytes(32),
     isAssessor: async (address) => address === assessor.address,
     readPolicy: async (policyId) => chainPolicies.get(policyId) ?? null,
+    rateLimits: false, // this file fires many requests at one app
     now: () => NOW,
   });
 

@@ -5,11 +5,12 @@
 // Anyone can turn a plate into its on-chain vehicle id through this endpoint, which is the
 // point of a public check (as with insurers' own plate checks). Requests are rate limited per
 // client to make bulk plate scraping slow.
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { vehicleIdFor } from "@vehicle-shield/protocol";
 import { schema, type Database } from "./db";
+import { rateLimit as limitRequests } from "./rate-limit";
 
 export interface PublicDeps {
   db: Database;
@@ -30,28 +31,9 @@ const plateSchema = z
   .trim()
   .regex(/^[A-Za-z0-9 -]{2,15}$/);
 
-/// A fixed-window counter per client, kept in memory: fine for one API instance. Behind several
-/// instances, move it to the shared database or the load balancer.
-function rateLimiter(limit: number, now: () => Date) {
-  const windows = new Map<string, { count: number; resetAt: number }>();
-  return async (c: Context, next: () => Promise<void>) => {
-    const client = c.req.header("x-forwarded-for")?.split(",")[0].trim() || c.req.header("x-real-ip") || "direct";
-    const time = now().getTime();
-    const window = windows.get(client);
-    if (!window || window.resetAt <= time) {
-      if (windows.size > 10_000) windows.clear();
-      windows.set(client, { count: 1, resetAt: time + 60_000 });
-    } else if (++window.count > limit) {
-      c.header("Retry-After", String(Math.ceil((window.resetAt - time) / 1000)));
-      return c.json({ error: "rate_limited", reason: "Too many checks. Try again in a minute." }, 429);
-    }
-    await next();
-  };
-}
-
 export function publicRoutes({ db, vehicleIdSalt, now, rateLimit = 30 }: PublicDeps) {
   const app = new Hono();
-  app.use("*", rateLimiter(rateLimit, now));
+  app.use("*", limitRequests({ limit: rateLimit, now, reason: "Too many checks. Try again in a minute." }));
 
   async function verifiedVehicle(vehicleId: string) {
     const [vehicle] = await db

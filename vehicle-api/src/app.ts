@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
 import { formatUnits, getAddress, isAddress, parseUnits, type BaseWallet } from "ethers";
 import { z } from "zod";
 import {
@@ -17,6 +18,7 @@ import { assessorRoutes } from "./assessor";
 import { evidenceRoutes, photoRoutes, vehicleRoutes } from "./photos";
 import { profileRoutes } from "./profile";
 import { publicRoutes } from "./public";
+import { rateLimit } from "./rate-limit";
 import { notificationRoutes } from "./notifications/routes";
 import type { Notifier } from "./notifications/notifier";
 import type { PolicyReader, RoleCheck } from "./roles";
@@ -40,6 +42,8 @@ export interface AppOptions {
   notifier?: Notifier;
   verifySignature?: SignatureCheck;
   corsOrigins?: string[];
+  /// Per-client request limits (on by default; tests that fire many requests turn them off).
+  rateLimits?: boolean;
   now?: () => Date;
 }
 
@@ -97,15 +101,30 @@ export function createApp({
   notifier,
   verifySignature,
   corsOrigins = [],
+  rateLimits = true,
   now = () => new Date(),
 }: AppOptions) {
   const app = new Hono();
   const domain = quoteDomain(deployment.chainId, deployment.contracts.InsuranceCore);
 
+  // Standard protective headers. Cross-origin resource and embedder policies stay off: the web
+  // app on another origin loads photos and data from here.
+  app.use("*", secureHeaders({ crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }));
   app.use(
     "/v1/*",
     cors({ origin: corsOrigins, allowMethods: ["GET", "POST", "PUT"], allowHeaders: ["Content-Type", "Authorization"] }),
   );
+
+  // Per client, per minute: everything, then tighter limits for sign-in, writes and uploads.
+  if (rateLimits) {
+    app.use("/v1/*", rateLimit({ limit: 300, now }));
+    app.use("/v1/auth/*", rateLimit({ limit: 20, now, reason: "Too many sign-in attempts. Try again in a minute." }));
+    const writes = rateLimit({ limit: 60, now });
+    const uploads = rateLimit({ limit: 30, now, reason: "Too many uploads. Try again in a minute." });
+    app.use("/v1/*", async (c, next) => (["POST", "PUT", "DELETE"].includes(c.req.method) ? writes(c, next) : next()));
+    app.use("/v1/vehicles/:id/photos", async (c, next) => (c.req.method === "POST" ? uploads(c, next) : next()));
+    app.use("/v1/claims/evidence", async (c, next) => (c.req.method === "POST" ? uploads(c, next) : next()));
+  }
 
   app.onError((error, c) => {
     console.error(error);

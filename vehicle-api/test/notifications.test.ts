@@ -293,6 +293,7 @@ describe("API", () => {
       isAssessor: async (address) => address === assessor.address,
       notifier,
       now: () => NOW,
+      rateLimits: false, // this file fires many requests at one app
     });
   });
 
