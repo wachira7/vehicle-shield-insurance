@@ -66,6 +66,14 @@ proof-of-cover QR codes).
   the plan. Afterwards, granting roles (e.g. a new assessor), withdrawing and pausing are done as
   Safe transactions.
 
+On Sepolia the admin, treasurer and pauser roles belong to the Safe
+`0x0ff0aD3a25Fa68a3dCFDca54844c51Bf781693fD` (2 of 2 owners); the deployer key holds no roles. To
+act as admin, open the Safe at app.safe.global → **New transaction → Transaction Builder**, enter
+the `InsuranceCore` address (its ABI loads from the verified source), pick the function, sign,
+and have the second owner approve. For example, a new assessor is `grantRole` with role
+`0x9f4de61ee0a27bbb9b31d54eb4763d20f594fd4e21db4df58a141f10a97b3567` (`keccak256("ASSESSOR_ROLE")`)
+and their address.
+
 | Role | Can |
 |---|---|
 | `QUOTE_SIGNER_ROLE` | Sign prices that buyers pay against (held only by the API's key) |
