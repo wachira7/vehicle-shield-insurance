@@ -17,7 +17,7 @@
   "dependencies": {
     "@vehicle-shield/protocol": "0.1.0",
     "hono": "^4.6.0",
-    "ponder": "0.17.12",
+    "ponder": "0.18.2",
     "viem": "^2.35.0"
   },
   "devDependencies": {
