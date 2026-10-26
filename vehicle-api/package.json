@@ -15,7 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",
     "@electric-sql/pglite": "^0.5.11",
-    "@hono/node-server": "^1.13.0",
+    "@hono/node-server": "^2.1.5",
     "@vehicle-shield/protocol": "0.1.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.4",
