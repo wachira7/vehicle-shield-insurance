@@ -56,12 +56,27 @@ proof-of-cover QR codes).
 
 ## Roles
 
-`InsuranceCore` uses OpenZeppelin access control. Grant roles with
-`ROLE=ASSESSOR_ROLE ACCOUNT=0x… yarn workspace vehicle-shield-contracts grant-role --network sepolia`.
+`InsuranceCore` uses OpenZeppelin access control. From `vehicle-backend`:
+
+- `yarn list-roles --network sepolia` shows who holds each role.
+- `ROLE=ASSESSOR_ROLE ACCOUNT=0x… yarn grant-role --network sepolia` grants one, and `yarn revoke-role`
+  (same settings) takes one away; it won't leave a role with nobody holding it.
+- `SAFE=0x… yarn hand-over-admin --network sepolia` moves the admin, treasurer and pauser roles to a
+  Safe multisig and has the deployer give up all of its roles. Without `CONFIRM=yes` it only prints
+  the plan. Afterwards, granting roles (e.g. a new assessor), withdrawing and pausing are done as
+  Safe transactions.
+
+On Sepolia the admin, treasurer and pauser roles belong to the Safe
+`0x0ff0aD3a25Fa68a3dCFDca54844c51Bf781693fD` (2 of 2 owners); the deployer key holds no roles. To
+act as admin, open the Safe at app.safe.global → **New transaction → Transaction Builder**, enter
+the `InsuranceCore` address (its ABI loads from the verified source), pick the function, sign,
+and have the second owner approve. For example, a new assessor is `grantRole` with role
+`0x9f4de61ee0a27bbb9b31d54eb4763d20f594fd4e21db4df58a141f10a97b3567` (`keccak256("ASSESSOR_ROLE")`)
+and their address.
 
 | Role | Can |
 |---|---|
-| `QUOTE_SIGNER_ROLE` | Sign prices that buyers pay against (held by the API's key) |
+| `QUOTE_SIGNER_ROLE` | Sign prices that buyers pay against (held only by the API's key) |
 | `ASSESSOR_ROLE` | Review, approve and decline claims; use the assessor console |
 | `TREASURER_ROLE` | Withdraw free funds from the pool |
 | `PAUSER_ROLE` | Pause buying and payouts in an emergency |
@@ -95,7 +110,7 @@ public issue.
 
 ## Before going live
 
-- Independent contract audit; move admin roles to a multisig; revoke the deployer's roles.
+- Independent contract audit; on the live network, admin roles held by a multisig from day one.
 - A real stablecoin on the chosen network, and an insurance licence (IRA in Kenya).
 - Hosted API, indexer and Postgres, with monitoring and backups. Back up `PHOTO_ENCRYPTION_KEY`
   and `VEHICLE_ID_SALT`: losing either can't be undone.
