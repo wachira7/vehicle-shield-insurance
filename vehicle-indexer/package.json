@@ -16,9 +16,9 @@
   },
   "dependencies": {
     "@vehicle-shield/protocol": "0.1.0",
-    "hono": "^4.6.0",
-    "ponder": "0.18.2",
-    "viem": "^2.35.0"
+    "hono": "^4.13.16",
+    "ponder": "0.18.5",
+    "viem": "^2.57.16"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
